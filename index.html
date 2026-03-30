@@ -166,21 +166,7 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, updateDoc, addDoc, increment, query, where, getDocs, getDoc, orderBy, limit, deleteDoc, writeBatch, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        // ⚠️ COLE SUA CONFIG AQUI ⚠️
-		const firebaseConfig = {
-		  apiKey: "AIzaSyBu8y9RQMv9fbxORcRLAZN4OlA1IEXyZUU",
-		  authDomain: "aurora-bar-system.firebaseapp.com",
-		  projectId: "aurora-bar-system",
-		  storageBucket: "aurora-bar-system.firebasestorage.app",
-		  messagingSenderId: "380441809814",
-		  appId: "1:380441809814:web:ad008f37d30a5b0abe03b7"
-		};
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+        // --- FUNÇÃO PARA FORMATAR O TELEFONE NA TELA DE LOGIN ---
         window.mascaraTelefone = (input) => {
             let v = input.value.replace(/\D/g,"");
             v = v.replace(/^(\d{2})(\d)/g,"($1) $2");
@@ -207,25 +193,53 @@
             buscarEventosAtivos(); 
         }
 
+        // --- MOTOR DE LOGIN: VERIFICA NO POSTGRESQL ---
         window.fazerLogin = async () => {
-            const tel = document.getElementById('loginPhone').value;
-            const btn = document.querySelector('.login-btn');
-            const erro = document.getElementById('login-error');
-            if(!tel) return;
-            btn.innerText = "Verificando..."; erro.style.display = 'none';
+            const telInput = document.getElementById("telefone-login");
+            const tel = telInput.value.replace(/\D/g, ''); // Limpa qualquer máscara ou espaço
+
+            if (tel.length < 10) {
+                alert("Por favor, digite um telefone válido com DDD.");
+                return;
+            }
+
+            // Mostra pro usuário que está pensando...
+            const btn = document.querySelector(".login-btn");
+            const textoOriginal = btn.innerText;
+            btn.innerText = "Verificando...";
+
             try {
-                const q = query(collection(db,"equipe"), where("telefone", "==", tel));
-                const snap = await getDocs(q);
-                if(snap.empty) { erro.style.display = 'block'; btn.innerText = "ENTRAR"; } 
-                else {
-                    const d = snap.docs[0].data();
-                    usuarioAtual = d.nome;
-                    localStorage.setItem('aurora_user_name', d.nome);
-                    localStorage.setItem('aurora_user_phone', d.telefone);
-                    await addDoc(collection(db,"acessos_sistema"), {nome: d.nome, tel: d.telefone, data: new Date(), tipo: 'app_barman'});
-                    location.reload();
+                // Bate na porta da nossa API em Python!
+                const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/login/${tel}`);
+                
+                if (!resposta.ok) {
+                    throw new Error("Telefone não autorizado ou inativo.");
                 }
-            } catch(e) { console.error(e); alert("Erro de conexão"); btn.innerText="ENTRAR"; }
+
+                const dados = await resposta.json();
+                
+                if (dados.status === "sucesso") {
+                    const usuario = dados.usuario;
+                    
+                    // Salva o nome (ex: Ricardo) na variável mestra e na memória do celular
+                    usuarioAtual = usuario.name;
+                    localStorage.setItem('usuarioLogado', usuarioAtual);
+                    localStorage.setItem('usuarioRole', usuario.role); // Guardamos o cargo pro futuro (painel admin!)
+                    
+                    // Atualiza a interface
+                    document.getElementById('user-display').innerText = "👤 " + usuarioAtual;
+                    document.getElementById('login-screen').style.display = 'none';
+                    
+                    // Puxa o calendário (Recepção VIP)!
+                    buscarEventosAtivos();
+                }
+            } catch (erro) {
+                console.error("Erro no login:", erro);
+                alert("Acesso negado: " + erro.message);
+            } finally {
+                // Volta o botão ao normal
+                btn.innerText = textoOriginal;
+            }
         };
 
         
