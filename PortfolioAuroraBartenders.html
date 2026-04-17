@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Bartenders | Portfólio Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+            scroll-behavior: smooth;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .gradient-gold {
+            background: linear-gradient(135deg, #d4af37 0%, #f9e29b 50%, #b8860b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gold {
+            background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px border rgba(255, 255, 255, 0.1);
+        }
+        .card-hover:hover {
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(212, 175, 55, 0.1);
+        }
+        .nav-link:after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: #d4af37;
+            transition: width .3s;
+        }
+        .nav-link:hover:after {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass border-b border-white/10 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="text-2xl font-serif font-bold tracking-tighter">
+                AURORA <span class="text-[#d4af37]">BARTENDERS</span>
+            </div>
+            <div class="hidden md:flex space-x-8 text-sm font-semibold tracking-widest uppercase">
+                <a href="#inicio" class="nav-link">Início</a>
+                <a href="#sobre" class="nav-link">A Aurora</a>
+                <a href="#servicos" class="nav-link">Serviços</a>
+                <a href="#drinks" class="nav-link">Coquetéis</a>
+                <a href="#contato" class="bg-gold text-black px-6 py-2 rounded-full hover:opacity-90 transition">Orçamento</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="relative h-screen flex items-center justify-center overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-black/60 z-10"></div>
+            <!-- Imagem de fundo representativa -->
+            <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=2070" alt="Bartender preparando drink" class="w-full h-full object-cover">
+        </div>
+        
+        <div class="relative z-20 text-center px-4 max-w-4xl">
+            <h1 class="text-5xl md:text-8xl font-serif mb-6 leading-tight">
+                A Arte da <span class="gradient-gold">Mixologia</span> Elevada ao Topo.
+            </h1>
+            <p class="text-lg md:text-xl text-gray-300 mb-8 font-light tracking-wide">
+                Experiências sensoriais exclusivas para eventos que buscam o extraordinário.
+            </p>
+            <div class="flex flex-col md:flex-row justify-center gap-4">
+                <a href="#servicos" class="bg-gold text-black font-bold px-10 py-4 rounded-full text-sm uppercase tracking-widest hover:scale-105 transition">Conhecer Serviços</a>
+                <a href="#drinks" class="border border-white/30 hover:bg-white/10 px-10 py-4 rounded-full text-sm uppercase tracking-widest transition">Nossos Drinks</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="sobre" class="py-24 px-6 bg-[#0a0a0a]">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+            <div>
+                <h2 class="text-4xl font-serif mb-6">Onde a <span class="text-[#d4af37]">Aurora</span> Acontece</h2>
+                <p class="text-gray-400 leading-relaxed mb-6">
+                    A Aurora Bartenders não é apenas um serviço de bar. Somos curadores de momentos. Combinamos técnica clássica com inovação contemporânea para criar uma atmosfera vibrante em cada evento.
+                </p>
+                <p class="text-gray-400 leading-relaxed mb-8">
+                    Nossa equipe é formada por especialistas apaixonados por hospitalidade, garantindo que cada convidado receba não apenas um drink, mas uma história servida em uma taça.
+                </p>
+                <div class="grid grid-cols-3 gap-8 text-center">
+                    <div>
+                        <div class="text-3xl font-serif text-[#d4af37] mb-2">+500</div>
+                        <div class="text-[10px] uppercase tracking-widest text-gray-500">Eventos Realizados</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-serif text-[#d4af37] mb-2">10k</div>
+                        <div class="text-[10px] uppercase tracking-widest text-gray-500">Drinks Servidos</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-serif text-[#d4af37] mb-2">100%</div>
+                        <div class="text-[10px] uppercase tracking-widest text-gray-500">Satisfação</div>
+                    </div>
+                </div>
+            </div>
+            <div class="relative">
+                <div class="border-2 border-[#d4af37] absolute -top-4 -left-4 w-full h-full z-0"></div>
+                <img src="https://images.unsplash.com/photo-1574096079513-d8259312b785?auto=format&fit=crop&q=80&w=1000" alt="Mixologia" class="relative z-10 w-full h-auto rounded-sm shadow-2xl">
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="servicos" class="py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-serif mb-4">Nossas <span class="gradient-gold">Especialidades</span></h2>
+                <div class="h-1 w-24 bg-gold mx-auto"></div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Casamentos -->
+                <div class="glass p-8 rounded-2xl card-hover">
+                    <div class="text-[#d4af37] mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-serif mb-4">Casamentos</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Cardápios personalizados que refletem a história do casal, com elegância e agilidade para celebrar o amor.
+                    </p>
+                </div>
+                
+                <!-- Corporativo -->
+                <div class="glass p-8 rounded-2xl card-hover border-t-2 border-[#d4af37]">
+                    <div class="text-[#d4af37] mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-serif mb-4">Corporativo</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Atendimento premium para lançamentos de marcas, festas de final de ano e networking de alto nível.
+                    </p>
+                </div>
+
+                <!-- Festas Privadas -->
+                <div class="glass p-8 rounded-2xl card-hover">
+                    <div class="text-[#d4af37] mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-serif mb-4">Festas Privadas</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Aniversários e reuniões exclusivas onde o bar se torna a atração principal da noite.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Drinks Portfolio -->
+    <section id="drinks" class="py-24 px-6 bg-[#0a0a0a]">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-12">
+                <div>
+                    <h2 class="text-4xl font-serif">Signature <span class="text-[#d4af37]">Drinks</span></h2>
+                    <p class="text-gray-500 mt-2">Uma pequena amostra da nossa carta exclusiva.</p>
+                </div>
+                <button class="hidden md:block text-[#d4af37] border-b border-[#d4af37] pb-1 hover:text-white hover:border-white transition">Ver Menu Completo</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="group relative overflow-hidden rounded-xl h-96">
+                    <img src="https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&q=80&w=800" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-0 p-6">
+                        <h4 class="text-xl font-serif">Aurora Gin Tonic</h4>
+                        <p class="text-xs text-[#d4af37] uppercase">Frutas vermelhas & Especiarias</p>
+                    </div>
+                </div>
+                <div class="group relative overflow-hidden rounded-xl h-96">
+                    <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-0 p-6">
+                        <h4 class="text-xl font-serif">Gold Martini</h4>
+                        <p class="text-xs text-[#d4af37] uppercase">Sofisticação clássica</p>
+                    </div>
+                </div>
+                <div class="group relative overflow-hidden rounded-xl h-96">
+                    <img src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=800" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-0 p-6">
+                        <h4 class="text-xl font-serif">Tropical Heat</h4>
+                        <p class="text-xs text-[#d4af37] uppercase">Manga, Maracujá & Pimenta</p>
+                    </div>
+                </div>
+                <div class="group relative overflow-hidden rounded-xl h-96">
+                    <img src="https://images.unsplash.com/photo-1560512823-829485b8bf24?auto=format&fit=crop&q=80&w=800" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-0 p-6">
+                        <h4 class="text-xl font-serif">Smoked Whiskey</h4>
+                        <p class="text-xs text-[#d4af37] uppercase">Notas amadeiradas & Defumadas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-24 px-6">
+        <div class="max-w-5xl mx-auto glass p-12 rounded-3xl text-center">
+            <div class="text-[#d4af37] mb-8 flex justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H16.017C14.9124 8 14.017 8.89543 14.017 10V12H12.017V10C12.017 7.79086 13.8079 6 16.017 6H19.017C20.6739 6 22.017 7.34315 22.017 9V15C22.017 17.7614 19.7784 20 17.017 20H14.017V21ZM2.017 21L2.017 18C2.017 16.8954 2.91243 16 4.017 16H7.017C7.56928 16 8.017 15.5523 8.017 15V9C8.017 8.44772 7.56928 8 7.017 8H4.017C2.91243 8 2.017 8.89543 2.017 10V12H0.017V10C0.017 7.79086 1.80787 6 4.017 6H7.017C8.67386 6 10.017 7.34315 10.017 9V15C10.017 17.7614 7.77843 20 5.017 20H2.017V21Z" />
+                </svg>
+            </div>
+            <p class="text-2xl font-serif italic mb-8 leading-relaxed">
+                "A Aurora transformou nosso casamento em um verdadeiro espetáculo. O atendimento foi impecável e os drinks foram o comentário de todos os convidados por semanas!"
+            </p>
+            <div>
+                <p class="font-bold text-[#d4af37]">Mariana & Roberto</p>
+                <p class="text-xs text-gray-500 uppercase tracking-widest">Noivos de Outubro/2023</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer / Contact -->
+    <footer id="contato" class="py-20 px-6 border-t border-white/10">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-12 md:mb-0 text-center md:text-left">
+                <h2 class="text-4xl font-serif mb-4">Vamos criar algo <span class="gradient-gold">mágico</span>?</h2>
+                <p class="text-gray-400 mb-8">Disponível para eventos em todo o país.</p>
+                <div class="space-y-4">
+                    <p class="flex items-center justify-center md:justify-start gap-4">
+                        <span class="text-[#d4af37]">●</span> contato@aurorabartenders.com.br
+                    </p>
+                    <p class="flex items-center justify-center md:justify-start gap-4">
+                        <span class="text-[#d4af37]">●</span> (11) 99999-9999
+                    </p>
+                </div>
+            </div>
+            
+            <div class="w-full md:w-96 glass p-8 rounded-2xl">
+                <form class="space-y-4">
+                    <input type="text" placeholder="Seu Nome" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d4af37]">
+                    <input type="email" placeholder="E-mail" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d4af37]">
+                    <textarea placeholder="Fale sobre seu evento" rows="3" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d4af37]"></textarea>
+                    <button class="w-full bg-gold text-black font-bold py-4 rounded-lg uppercase tracking-tighter hover:opacity-90 transition">Enviar Solicitação</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+            <p>© 2024 Aurora Bartenders. Todos os direitos reservados.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-white">Instagram</a>
+                <a href="#" class="hover:text-white">LinkedIn</a>
+                <a href="#" class="hover:text-white">WhatsApp</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

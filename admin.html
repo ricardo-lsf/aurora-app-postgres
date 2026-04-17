@@ -1242,12 +1242,11 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th width="40">Img</th>
+                                    <th style="text-align: center;">Img</th>
                                     <th>Nome</th>
                                     <th>Venda</th>
-                                    <th>Custo</th>
-                                    <th>Est</th>
-                                    <th></th>
+                                    <th style="text-align: center;">Estoque</th>
+                                    <th style="text-align: center;">Ação</th>
                                 </tr>
                             </thead>
                             <tbody id="tabela-evento"></tbody>
@@ -3043,6 +3042,33 @@
         window.abrirModalNovo = () => { document.getElementById('modalNovoEvento').style.display = 'flex';['mNome', 'mResp', 'mTel', 'mData', 'mHora', 'mLocal', 'mTermino'].forEach(i => document.getElementById(i).value = ''); };
         window.fecharModal = () => { document.getElementById('modalNovoEvento').style.display = 'none'; };
 
+        window.aplicarEstoqueMassa = async () => {
+            if (!eventoID) return alert("Selecione um evento primeiro!");
+            
+            const qtd = document.getElementById('estoqueMassa').value;
+            if (qtd === "" || qtd < 0) return alert("Digite um valor válido.");
+
+            if (!confirm(`Deseja alterar o estoque de TODOS os drinks para ${qtd}?`)) return;
+
+            try {
+                const res = await fetch(`https://aurora-api-zj8e.onrender.com/events/${eventoID}/menu/bulk-quantity`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ quantidade: parseInt(qtd) })
+                });
+
+                if (res.ok) {
+                    alert("Estoque atualizado com sucesso!");
+                    window.carregarCardapioEvento(eventoID); // Recarrega a tabela para mostrar os novos números
+                } else {
+                    throw new Error("Erro ao processar atualização em massa");
+                }
+            } catch (err) {
+                alert("Erro: " + err.message);
+            }
+        };
+
+
         // ============================================================
         // SALVAR NOVO EVENTO (POSTGRESQL)
         // ============================================================
@@ -3102,7 +3128,7 @@
     // ============================================================
     // CARREGAR DETALHES DO EVENTO (POSTGRESQL) - VERSÃO BLINDADA
     // ============================================================
-        window.carregarEvento = async (id) => {
+    window.carregarEvento = async (id) => {
         console.log("Selecionando evento ID:", id);
         eventoID = id; 
         
@@ -3115,7 +3141,7 @@
 
             const ev = await resposta.json();
 
-            // 🛠️ FORMATADOR DE MOEDA: Transforma 1330 do banco em "1.330,00" para a tela
+            // 🛠️ FORMATADOR DE MOEDA
             const formatarMoedaBR = (valor) => {
                 if (valor === null || valor === undefined) return "";
                 const numero = parseFloat(valor);
@@ -3123,6 +3149,7 @@
                 return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             };
 
+            // 🛠️ PREENCHIMENTO SEGURO (Sem loop infinito de cardápio!)
             const preencherSeguro = (idCampo, valor) => {
                 const campo = document.getElementById(idCampo);
                 if (campo) {
@@ -3131,15 +3158,10 @@
                     } else {
                         campo.value = valor || "";
                     }
-                    if (typeof window.carregarCardapioEvento === 'function') {
-                        window.carregarCardapioEvento(eventoID);
-                    }
-                };
-                
+                }
             };
 
-            // 1. TÍTULO E GERAIS
-            preencherSeguro('titulo-evento', ev.name || "Evento Sem Nome");
+            // 1. GERAIS
             preencherSeguro('detResp', ev.responsible_name);
             preencherSeguro('detTel', ev.phone);
             preencherSeguro('detData', ev.event_date);
@@ -3153,14 +3175,14 @@
             preencherSeguro('detExtH', ev.extra_h || 0);
             preencherSeguro('detExtM', ev.extra_m || 0);
 
-            // 3. DADOS FINANCEIROS (Agora passando pelo formatador BR!)
+            // 3. DADOS FINANCEIROS
             preencherSeguro('finContrato', formatarMoedaBR(ev.contract_value));
             preencherSeguro('finValorExtra', formatarMoedaBR(ev.extra_hour_value));
             preencherSeguro('finSinalPerc', ev.upfront_perc);
             preencherSeguro('finCustoExtra', formatarMoedaBR(ev.extra_costs_value));
             preencherSeguro('finDescCustoExtra', ev.extra_costs_desc);
 
-            // 4. BOTÕES DE STATUS (Substituindo o "fantasma" do Firebase)
+            // 4. BOTÕES DE STATUS E A FAMOSA TAG "NO AR" 🟢
             const statusAtual = ev.status || 'aberto';
             const divStatus = document.getElementById('controles-status');
             if (divStatus) {
@@ -3169,13 +3191,28 @@
                     : `<button onclick="mudarStatus('fechado')" class="cmd-btn btn-lock">🔒 ENCERRAR</button>`;
             }
 
+            const titulo = document.getElementById('titulo-evento');
+            if (titulo) {
+                const nomeFesta = ev.name || "Evento Sem Nome";
+                if (statusAtual === 'aberto') {
+                    titulo.innerHTML = `${nomeFesta} <span style="background:#27ae60; color:#fff; font-size:12px; padding:3px 8px; border-radius:12px; vertical-align:middle; margin-left:10px;">🟢 NO AR</span>`;
+                } else {
+                    titulo.innerHTML = `${nomeFesta} <span style="background:#c0392b; color:#fff; font-size:12px; padding:3px 8px; border-radius:12px; vertical-align:middle; margin-left:10px;">🔴 ENCERRADO</span>`;
+                }
+            }
+
             // Abre o painel lateral
             const painel = document.getElementById('painel-detalhes');
             if (painel) painel.style.display = 'block';
 
-            // 5. O PULO DO GATO: Forçar os cálculos para não vazar dados do evento anterior!
+            // 5. FORÇAR CÁLCULOS VISUAIS
             if (typeof window.calcTermino === 'function') window.calcTermino('det');
             if (typeof window.calcContrato === 'function') window.calcContrato();
+
+            // 6. FINALMENTE: CARREGA O CARDÁPIO UMA ÚNICA VEZ! 🍹
+            if (typeof window.carregarCardapioEvento === 'function') {
+                window.carregarCardapioEvento(eventoID);
+            }
 
         } catch (e) {
             console.error("Erro ao carregar detalhes:", e);
@@ -3234,6 +3271,252 @@
             }
         };
 
+    // ============================================================
+    // 1. GERAÇÃO DA LISTA (BUSCA NO POSTGRES + RENDERIZAÇÃO)
+    // ============================================================
+    window.gerarListaCompras = async () => {
+        if (!eventoID) return alert("Selecione um evento primeiro!");
+
+        const container = document.getElementById('lista-revisao-items');
+        // Pegamos o botão de impressão para esconder/mostrar
+        const btnImprimir = document.querySelector('.btn-primary[onclick="imprimirListaFinal()"]');
+        
+        if (!container) return alert("Erro de HTML: div não encontrada.");
+
+        // 1. Reset: Esconde o botão e limpa o cache antigo
+        if(btnImprimir) btnImprimir.style.display = 'none';
+        window.listaComprasCache = null;
+
+        container.innerHTML = '<p style="text-align:center; padding:20px; font-weight:bold;">🔄 Calculando volumes e custos no banco...<br><span style="font-size:12px; font-weight:normal; color:#888;">Cruzando fichas técnicas e estoque...</span></p>';
+        document.getElementById('modalRevisaoCompras').style.display = 'flex';
+
+        try {
+            const res = await fetch(`https://aurora-api-zj8e.onrender.com/events/${eventoID}/shopping-list`);
+            const data = await res.json();
+
+            if (!data.lista || data.lista.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">⚠️ Nenhum item calculado. Verifique se os drinks têm receitas e se você definiu o estoque no cardápio!</p>';
+                return;
+            }
+
+            // 2. Abastece o cache com os dados reais
+            window.listaComprasCache = data.lista;
+
+            // 3. Monta o HTML da tabela (Atualizado com Custo Real e Nova Estrutura)
+            let html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 10px; background:#f8f9fa; border-bottom:2px solid #ddd; font-weight:bold; font-size:12px; color:#555;">
+                    <div style="flex:2;">Insumo</div>
+                    <div style="flex:1; text-align:center;">Necessidade</div>
+                    <div style="flex:0.6; text-align:center;">Qtd</div>
+                    <div style="flex:0.8; text-align:right;">R$ Un.</div>
+                    <div style="flex:1; text-align:right;">R$ Real</div>
+                    <div style="flex:1; text-align:right;">R$ Compra</div>
+                </div>`;
+
+            data.lista.forEach((item, index) => {
+                const precoUn = parseFloat(item.preco_unitario || 0);
+                const custoReal = parseFloat(item.custo_real_uso || 0);
+                const custoCompra = parseFloat(item.custo_aquisicao || 0);
+                
+                html += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; background:#fff; font-size:13px;">
+                        <div style="flex:2; display:flex; align-items:center; gap:8px; overflow:hidden;">
+                            <input type="checkbox" id="chk_compra_${index}" style="width:16px; height:16px; cursor:pointer; margin:0; flex-shrink:0;">
+                            <label for="chk_compra_${index}" style="cursor:pointer; margin:0; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                <b>${item.insumo}</b> <br><small style="color:#888">${item.marca || ''}</small>
+                            </label>
+                        </div>
+                        
+                        <div style="flex:1; color:#7f8c8d; text-align:center; line-height:1.2;">
+                            ${item.total_necessario_formatado} <br>
+                            <span style="font-size:10px; color:#bdc3c7;">(Emb: ${item.tamanho_embalagem})</span>
+                        </div>
+                        
+                        <div style="flex:0.6; font-weight:bold; color:#2980b9; text-align:center;">
+                            ${item.qtd_comprar}
+                        </div>
+                        
+                        <div style="flex:0.8; color:#7f8c8d; text-align:right;">
+                            R$ ${precoUn.toFixed(2).replace('.', ',')}
+                        </div>
+                        
+                        <div style="flex:1; font-weight:bold; color:#8e44ad; text-align:right;">
+                            R$ ${custoReal.toFixed(2).replace('.', ',')}
+                        </div>
+                        
+                        <div style="flex:1; font-weight:bold; color:#e67e22; text-align:right;">
+                            R$ ${custoCompra.toFixed(2).replace('.', ',')}
+                        </div>
+                    </div>`;
+            });
+
+            // Rodapé com o DRE Básico (Custo Operacional vs Desembolso)
+            html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 10px; background:#ecf0f1; border-top:2px solid #bdc3c7; font-size:14px; font-weight:bold;">
+                    <div style="color:#2c3e50;">
+                        Custo Real: <span style="color:#8e44ad;">R$ ${data.total_custo_real.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div style="color:#2c3e50;">
+                        Gasto Previsto: <span style="color:#e67e22;">R$ ${data.total_estimado.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>`;
+
+            container.innerHTML = html;
+
+            // 4. MÁGICA: Só mostramos o botão de imprimir agora que o dado EXISTE!
+            if(btnImprimir) btnImprimir.style.display = 'block';
+
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<p style="text-align:center; padding:20px; color:red;">❌ Erro ao conectar com o servidor. Tente novamente em instantes.</p>`;
+        }
+    };
+
+// ============================================================
+    // 2. FUNÇÃO DE IMPRESSÃO (RELATÓRIO COMPLETO TIPO TABELA)
+    // ============================================================
+    window.imprimirListaFinal = () => {
+        if (!window.listaComprasCache || window.listaComprasCache.length === 0) {
+            console.error("Erro: listaComprasCache está vazia.");
+            return alert("Erro: A lista ainda não foi carregada. Gere a lista no painel primeiro.");
+        }
+
+        let comprar = [], estoque = [];
+        let totalComprar = 0; 
+        let totalCustoReal = 0; 
+
+        window.listaComprasCache.forEach((item, index) => {
+            const chk = document.getElementById(`chk_compra_${index}`);
+            const valorAquisicao = parseFloat(item.custo_aquisicao || 0);
+            const valorReal = parseFloat(item.custo_real_uso || 0);
+
+            totalCustoReal += valorReal;
+
+            if (chk && chk.checked) {
+                estoque.push(item);
+            } else {
+                comprar.push(item);
+                totalComprar += valorAquisicao;
+            }
+        });
+
+        // 1. Tratamento do Título (Removemos o "No Ar" para a impressão)
+        let nomeRaw = document.getElementById('titulo-evento')?.innerText || "Evento Aurora";
+        const nomeEventoLimpo = nomeRaw.replace(/\[?No Ar\]?/gi, '').replace(/-/g, '').trim();
+
+        // 2. Captura da Data (Ajuste o ID 'data-evento' para o ID real que você usa no HTML)
+        const dataRaw = document.getElementById('data-evento')?.innerText || "";
+        const dataEvento = dataRaw ? ` | Data: ${dataRaw}` : "";
+
+        // 3. Montagem da Estrutura Visual (CSS otimizado para papel A4)
+        let msg = `<html><head><title>Listagem de Insumos - ${nomeEventoLimpo}</title>
+        <style>
+            @page { margin: 15mm; }
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; color: #333; line-height: 1.4; font-size: 12px; }
+            
+            /* Cabeçalho */
+            .header-relatorio { border-bottom: 3px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }
+            .header-relatorio h1 { font-size: 24px; margin: 0 0 5px 0; color: #2c3e50; }
+            .header-relatorio h3 { font-size: 16px; margin: 0; color: #7f8c8d; font-weight: normal; }
+            
+            h2 { font-size: 16px; margin-top: 20px; padding-bottom: 5px; border-bottom: 2px solid #ccc; }
+            
+            /* Tabela Profissional */
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #f8f9fa; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; font-size: 11px; color: #555; text-transform: uppercase; }
+            td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+            
+            .td-right { text-align: right; }
+            .td-center { text-align: center; }
+            
+            /* Badges */
+            .badge-qtd { background: #eee; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; white-space: nowrap; }
+            .badge-estoque { background: #d4edda; color: #155724; }
+            
+            /* Rodapé */
+            .footer { margin-top: 30px; padding: 15px; background: #f8f9fa; border: 2px solid #ddd; text-align: right; font-size: 14px; }
+            .footer p { margin: 5px 0; }
+            .highlight { font-size: 18px; font-weight: bold; color: #e67e22; border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px; }
+        </style></head><body>
+        
+        <div class="header-relatorio">
+            <h1>📋 LISTAGEM DE INSUMOS</h1>
+            <h3>${nomeEventoLimpo}${dataEvento}</h3>
+        </div>`;
+
+        // 4. Função auxiliar para desenhar as linhas da tabela repetidas vezes
+        const gerarLinhasTabela = (itens, isEstoque) => {
+            if (itens.length === 0) return `<tr><td colspan="6" class="td-center" style="padding:15px; color:#888;">Nenhum item nesta lista.</td></tr>`;
+            
+            return itens.map(i => {
+                const precoUn = parseFloat(i.preco_unitario || 0).toFixed(2).replace('.', ',');
+                const custoReal = parseFloat(i.custo_real_uso || 0).toFixed(2).replace('.', ',');
+                const custoCompra = parseFloat(i.custo_aquisicao || 0).toFixed(2).replace('.', ',');
+                
+                const badgeClass = isEstoque ? 'badge-qtd badge-estoque' : 'badge-qtd';
+                const labelAcao = isEstoque ? 'Já em Estoque' : 'Comprar';
+                
+                // Se for estoque, o custo da compra fica verdinho (já pago), senão fica laranja (a pagar)
+                const corTotal = isEstoque ? '#27ae60' : '#e67e22';
+
+                return `
+                <tr>
+                    <td style="width: 25%;">
+                        <b>${i.insumo}</b><br>
+                        <span style="font-size:10px; color:#888;">${i.marca || 'Sem marca definida'}</span>
+                    </td>
+                    <td style="width: 22%; color: #555;">
+                        <b>${i.total_necessario_formatado}</b><br>
+                        <span style="font-size:10px; color:#999;">(Emb: ${i.tamanho_embalagem})</span>
+                    </td>
+                    <td class="td-center" style="width: 15%;">
+                        <span class="${badgeClass}">${labelAcao} ${i.qtd_comprar}</span>
+                    </td>
+                    <td class="td-right" style="width: 11%; color:#7f8c8d;">R$ ${precoUn}</td>
+                    <td class="td-right" style="width: 13%; font-weight:bold; color:#8e44ad;">R$ ${custoReal}</td>
+                    <td class="td-right" style="width: 14%; font-weight:bold; color:${corTotal};">R$ ${custoCompra}</td>
+                </tr>`;
+            }).join('');
+        };
+
+        const cabecalhoTabelaHtml = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Necessidade</th>
+                        <th class="td-center">Ação / Qtd</th>
+                        <th class="td-right">R$ Un.</th>
+                        <th class="td-right">R$ Real</th>
+                        <th class="td-right">R$ Compra</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        // 5. Injetando a Tabela de COMPRAS
+        msg += `<h2 style="color:#c0392b">🔴 IR AO MERCADO (Preciso Comprar)</h2>`;
+        msg += cabecalhoTabelaHtml + gerarLinhasTabela(comprar, false) + `</tbody></table>`;
+
+        // 6. Injetando a Tabela de ESTOQUE
+        msg += `<h2 style="color:#27ae60">🟢 JÁ TENHO EM ESTOQUE (Só Separar)</h2>`;
+        msg += cabecalhoTabelaHtml + gerarLinhasTabela(estoque, true) + `</tbody></table>`;
+
+        // 7. Rodapé Financeiro Atualizado
+        msg += `<div class="footer">
+            <p>Custo Aquisição dos Insumos (Gasto Estimado): <b>R$ ${totalCustoReal.toFixed(2).replace('.', ',')}</b></p>
+            <p class="highlight">GASTO REAL PREVISTO: R$ ${totalComprar.toFixed(2).replace('.', ',')}</p>
+        </div>`;
+        
+        msg += `</body></html>`;
+
+        const w = window.open("", "_blank");
+        w.document.write(msg);
+        w.document.close();
+        setTimeout(() => { w.print(); }, 500);
+        
+        document.getElementById('modalRevisaoCompras').style.display = 'none';
+    };
 
 
     // ==========================================
@@ -3392,24 +3675,51 @@
                 return;
             }
 
-            data.dados.forEach(drink => {
+        data.dados.forEach(drink => {
                 const foto = drink.image_url || 'https://via.placeholder.com/40?text=🍹';
                 const preco = parseFloat(drink.preco_venda || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                 
+                // Exatamente 5 colunas para bater com o HTML: Imagem, Nome, Venda, Estoque e Lixeira
                 tbody.innerHTML += `
                     <tr data-id="${drink.id}">
-                        <td style="text-align: center;"><img src="${foto}" width="40" height="40" style="border-radius:4px; object-fit:cover;"></td>
+                        <td style="text-align: center;">
+                            <img src="${foto}" width="40" height="40" style="border-radius:4px; object-fit:cover;">
+                        </td>
                         <td><b>${drink.drink_nome}</b></td>
                         <td>${preco}</td>
-                        <td>-</td>
-                        <td style="text-align: center;"><input type="number" class="input-estoque" value="0" style="width: 60px; text-align: center;"></td>
-                        <td style="text-align: center;"><button onclick="removerDrinkCardapio('${drink.id}')" style="background: none; border: none; cursor: pointer; font-size: 16px;" title="Remover">🗑️</button></td>
+                        <td style="text-align: center;">
+                            <input type="number" 
+                                   class="input-estoque" 
+                                   value="${drink.planned_quantity || 0}" 
+                                   onchange="atualizarEstoqueNoBanco('${drink.id}', this.value)"
+                                   style="width: 60px; text-align: center;">
+                        </td>
+                        <td style="text-align: center;">
+                            <button onclick="removerDrinkCardapio('${drink.id}')" style="background: none; border: none; cursor: pointer; font-size: 16px;" title="Remover">🗑️</button>
+                        </td>
                     </tr>
                 `;
             });
 
         } catch(e) {
             console.error(e);
+        }
+    };
+
+    window.atualizarEstoqueNoBanco = async (cocktailId, novaQtd) => {
+        if (!eventoID) return;
+        
+        try {
+            const res = await fetch(`https://aurora-api-zj8e.onrender.com/events/${eventoID}/menu/${cocktailId}/quantity`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ quantidade: parseInt(novaQtd) })
+            });
+            
+            if (!res.ok) throw new Error("Falha ao salvar quantidade");
+            console.log(`Estoque de ${cocktailId} atualizado para ${novaQtd}`);
+        } catch (err) {
+            alert("Erro ao salvar quantidade: " + err.message);
         }
     };
 
@@ -3474,76 +3784,7 @@
         if (typeof window.carregarCatalogoGlobal === 'function') window.carregarCatalogoGlobal();
     });
 
-        // --- 3. FUNÇÃO DE IMPRESSÃO ATUALIZADA ---
-        window.imprimirListaFinal = () => {
-            let comprar = [], estoque = [];
-            let totalComprar = 0, totalEstoque = 0;
 
-            listaComprasCache.forEach((item, index) => {
-                const chk = document.getElementById(`chk_compra_${index}`);
-                if (chk && chk.checked) {
-                    estoque.push(item);
-                    totalEstoque += item.subtotalReal;
-                } else {
-                    comprar.push(item);
-                    totalComprar += item.subtotalReal;
-                }
-            });
-
-            let msg = `<html><head><title>Lista de Compras - Aurora Bartenders</title>
-    <style>
-        body{font-family:sans-serif; color:#333;}
-        h2{border-bottom:2px solid #333; padding-bottom:5px;}
-        ul{list-style:none; padding:0;}
-        li{padding:8px 0; border-bottom:1px dotted #ccc; display:flex; justify-content:space-between; align-items:center; font-size:14px;}
-        .detalhes{color:#666; font-size:12px; margin-left:10px;}
-        .valores{text-align:right;}
-        .sub{display:block; font-weight:bold;}
-        .un{display:block; font-size:11px; color:#888;}
-        .totais{font-size:18px; font-weight:bold; padding:15px; background:#f4f4f4; margin-top:20px; border-radius:5px;}
-    </style></head><body>
-    <h1>🛒 LISTA DE COMPRAS - ${document.getElementById('titulo-evento').innerText}</h1>`;
-
-            msg += `<h2 style="color:#c0392b">🔴 A COMPRAR (Falta)</h2><ul>`;
-            if (comprar.length === 0) msg += "<li>Nada a comprar!</li>";
-            else comprar.forEach(i => {
-                msg += `<li>
-            <div>[ ] <b>${i.nome}</b> <span class="detalhes">(Receita: ${i.qtdVolume} ${i.un})</span></div>
-            <div class="valores">
-                <span style="color:#2980b9; font-weight:bold; margin-right:15px;">Levar: ${i.qtdComprar} un</span>
-                <div style="display:inline-block; text-align:right;">
-                    <span class="sub">R$ ${i.subtotalReal.toFixed(2).replace('.', ',')}</span>
-                    <span class="un">${i.qtdComprar} x R$ ${i.precoUnit.toFixed(2).replace('.', ',')}</span>
-                </div>
-            </div>
-        </li>`;
-            });
-            msg += `</ul><div style="text-align:right; font-weight:bold; color:#c0392b; font-size:16px;">Subtotal a Comprar: R$ ${totalComprar.toFixed(2).replace('.', ',')}</div>`;
-
-            msg += `<h2 style="color:#27ae60; margin-top:30px;">🟢 EM ESTOQUE (Já tenho)</h2><ul>`;
-            if (estoque.length === 0) msg += "<li>Nada marcado em estoque.</li>";
-            else estoque.forEach(i => {
-                msg += `<li>
-            <div>[ok] <b>${i.nome}</b> <span class="detalhes">(Receita: ${i.qtdVolume} ${i.un})</span></div>
-            <div class="valores">
-                <span style="color:#27ae60; font-weight:bold; margin-right:15px;">Separar: ${i.qtdComprar} un</span>
-                <div style="display:inline-block; text-align:right;">
-                    <span class="sub">R$ ${i.subtotalReal.toFixed(2).replace('.', ',')}</span>
-                    <span class="un">${i.qtdComprar} x R$ ${i.precoUnit.toFixed(2).replace('.', ',')}</span>
-                </div>
-            </div>
-        </li>`;
-            });
-            msg += `</ul><div style="text-align:right; font-weight:bold; color:#27ae60; font-size:16px;">Valor do Estoque Utilizado: R$ ${totalEstoque.toFixed(2).replace('.', ',')}</div>`;
-
-            msg += `<div class="totais" style="text-align:right;">CUSTO TOTAL DA OPERAÇÃO: R$ ${(totalComprar + totalEstoque).toFixed(2).replace('.', ',')}</div>`;
-            msg += `</body></html>`;
-
-            const w = window.open("", "_blank"); w.document.write(msg); w.document.close();
-            // Um pequeno delay garante que o CSS carregue antes de abrir a janela de impressão
-            setTimeout(() => { w.print(); }, 200);
-            document.getElementById('modalRevisaoCompras').style.display = 'none';
-        };
 
         // 5.3 PDF NOTA SERVIÇO (V52/V54 - MANTIDA)
         window.gerarNotaServico = () => {

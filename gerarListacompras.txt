@@ -1,0 +1,215 @@
+        // 5.2 LISTA DE COMPRAS (VISÃO DUPLA: VOLUME EXATO + GARRAFAS FECHADAS)
+/*         window.gerarListaCompras = async () => {
+            if (!eventoID) return alert("Selecione um evento!"); */
+            window.gerarListaCompras = async () => {
+            return alert("🚧 Lista de compras em manutenção para o PostgreSQL! Voltamos já!");
+            // --- 1. LÓGICA DE DADOS ---
+            const snaps = await getDocs(collection(db, "eventos", eventoID, "cardapio"));
+            const totais = {};
+
+            snaps.docs.forEach(doc => {
+                const dE = doc.data();
+                const dG = typeof bibliotecaGlobal !== 'undefined' ? bibliotecaGlobal.find(g => g.id === dE.idOriginal) : null;
+
+                const receitaUsar = (dG && dG.ingredientes) ? dG.ingredientes :
+                    (dG && dG.receita) ? dG.receita :
+                        (dE.ingredientes || dE.receita);
+
+                if (receitaUsar && Array.isArray(receitaUsar)) {
+                    receitaUsar.forEach(i => {
+                        const qtdNecessaria = (parseFloat(i.qtd) || 0) * (parseFloat(dE.estoque) || 0);
+                        const nomeChave = (i.nome || i.produto || 'Item').trim();
+
+                        if (!totais[nomeChave]) {
+                            const unidade = i.unMedida || i.un || 'ml';
+                            totais[nomeChave] = { qtd: 0, un: unidade };
+                        }
+                        totais[nomeChave].qtd += qtdNecessaria;
+                    });
+                }
+            });
+
+            // --- 1.5 LÓGICA DE PREÇOS E EMBALAGENS ---
+            const insumosSnap = await getDocs(collection(db, "insumos"));
+            const catalogoPrecos = {};
+
+            insumosSnap.forEach(doc => {
+                const dados = doc.data();
+                const nomeInsumo = (dados.nome || dados.produto || '').trim().toLowerCase();
+
+                const precoGarrafa = typeof dados.refPreco === 'number' ? dados.refPreco : (parseFloat(dados.refPreco) || 0);
+                const volGarrafa = typeof dados.refVolume === 'number' && dados.refVolume > 0 ? dados.refVolume : (parseFloat(dados.refVolume) || 1);
+
+                if (nomeInsumo) {
+                    catalogoPrecos[nomeInsumo] = {
+                        precoIntegral: precoGarrafa,
+                        volumeEmbalagem: volGarrafa
+                    };
+                }
+            });
+
+            listaComprasCache = [];
+            let valorDesembolsoReal = 0;
+
+            Object.keys(totais).forEach(nome => {
+                let item = totais[nome];
+                let q_raw = item.qtd;
+                let q_exibicao = item.qtd;
+                let u = item.un;
+
+                const nomeParaBusca = nome.trim().toLowerCase();
+                const dadosPreco = catalogoPrecos[nomeParaBusca] || { precoIntegral: 0, volumeEmbalagem: 1 };
+
+                // Cálculo de Garrafas (Arredondado para cima)
+                let embalagensDecimal = q_raw / dadosPreco.volumeEmbalagem;
+                let qtdComprarReal = Math.ceil(embalagensDecimal);
+                let custoCaixaReal = qtdComprarReal * dadosPreco.precoIntegral;
+
+                valorDesembolsoReal += custoCaixaReal;
+
+                // Conversão de Volume para exibição
+                if (u === 'ml' && q_exibicao >= 1000) { q_exibicao /= 1000; u = 'L'; }
+                else if (u === 'g' && q_exibicao >= 1000) { q_exibicao /= 1000; u = 'Kg'; }
+
+                listaComprasCache.push({
+                    nome: nome,
+                    qtdVolume: q_exibicao.toFixed(2).replace('.00', ''), // O que a receita pede
+                    un: u,
+                    qtdComprar: qtdComprarReal, // Unidades fechadas
+                    precoUnit: dadosPreco.precoIntegral, // Valor da garrafa
+                    subtotalReal: custoCaixaReal // Valor total das garrafas
+                });
+            });
+            listaComprasCache.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            // --- 2. RENDERIZAÇÃO VISUAL NO PAINEL ---
+            const container = document.getElementById('lista-revisao-items');
+            if (container) {
+                container.innerHTML = '';
+
+                if (listaComprasCache.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">Nenhum item calculado.</p>';
+                } else {
+                    // Cabeçalho com as 5 colunas
+                    container.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 10px; background:#f8f9fa; border-bottom:2px solid #ddd; font-weight:bold; font-size:12px; color:#555;">
+                <div style="flex:2;">Insumo</div>
+                <div style="flex:1; text-align:center;" title="Volume exigido pela receita">Volume</div>
+                <div style="flex:0.8; text-align:center;" title="Unidades inteiras a comprar">Qtd</div>
+                <div style="flex:1; text-align:right;">R$ Un.</div>
+                <div style="flex:1; text-align:right;">R$ Total</div>
+            </div>`;
+
+                    listaComprasCache.forEach((item, index) => {
+                        const precoFormatado = item.precoUnit > 0 ? `R$ ${item.precoUnit.toFixed(2).replace('.', ',')}` : '-';
+                        const subtotalFormatado = item.subtotalReal > 0 ? `R$ ${item.subtotalReal.toFixed(2).replace('.', ',')}` : '-';
+
+                        container.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; background:#fff; font-size:13px;">
+                    
+                    <div style="flex:2; display:flex; align-items:center; gap:8px; overflow:hidden;">
+                        <input type="checkbox" id="chk_compra_${index}" style="width:16px; height:16px; cursor:pointer; margin:0; flex-shrink:0;">
+                        <label for="chk_compra_${index}" style="cursor:pointer; margin:0; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.nome}">
+                            ${item.nome}
+                        </label>
+                    </div>
+
+                    <div style="flex:1; color:#7f8c8d; text-align:center; white-space:nowrap;">
+                        ${item.qtdVolume} <span style="font-size:10px;">${item.un}</span>
+                    </div>
+
+                    <div style="flex:0.8; font-weight:bold; color:#2980b9; text-align:center;">
+                        ${item.qtdComprar}
+                    </div>
+
+                    <div style="flex:1; color:#7f8c8d; text-align:right;">
+                        ${precoFormatado}
+                    </div>
+
+                    <div style="flex:1; font-weight:bold; color:#e67e22; text-align:right;">
+                        ${subtotalFormatado}
+                    </div>
+
+                </div>`;
+                    });
+
+                    container.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 10px; background:#ecf0f1; border-top:2px solid #bdc3c7; font-size:15px; font-weight:bold;">
+                <div style="color:#2c3e50;">Desembolso Estimado:</div>
+                <div style="color:#e67e22;">R$ ${valorDesembolsoReal.toFixed(2).replace('.', ',')}</div>
+            </div>`;
+                }
+                document.getElementById('modalRevisaoCompras').style.display = 'flex';
+            }
+        };
+
+        // --- 3. FUNÇÃO DE IMPRESSÃO ATUALIZADA ---
+        window.imprimirListaFinal = () => {
+            let comprar = [], estoque = [];
+            let totalComprar = 0, totalEstoque = 0;
+
+            listaComprasCache.forEach((item, index) => {
+                const chk = document.getElementById(`chk_compra_${index}`);
+                if (chk && chk.checked) {
+                    estoque.push(item);
+                    totalEstoque += item.subtotalReal;
+                } else {
+                    comprar.push(item);
+                    totalComprar += item.subtotalReal;
+                }
+            });
+
+            let msg = `<html><head><title>Lista de Compras - Aurora Bartenders</title>
+    <style>
+        body{font-family:sans-serif; color:#333;}
+        h2{border-bottom:2px solid #333; padding-bottom:5px;}
+        ul{list-style:none; padding:0;}
+        li{padding:8px 0; border-bottom:1px dotted #ccc; display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+        .detalhes{color:#666; font-size:12px; margin-left:10px;}
+        .valores{text-align:right;}
+        .sub{display:block; font-weight:bold;}
+        .un{display:block; font-size:11px; color:#888;}
+        .totais{font-size:18px; font-weight:bold; padding:15px; background:#f4f4f4; margin-top:20px; border-radius:5px;}
+    </style></head><body>
+    <h1>🛒 LISTA DE COMPRAS - ${document.getElementById('titulo-evento').innerText}</h1>`;
+
+            msg += `<h2 style="color:#c0392b">🔴 A COMPRAR (Falta)</h2><ul>`;
+            if (comprar.length === 0) msg += "<li>Nada a comprar!</li>";
+            else comprar.forEach(i => {
+                msg += `<li>
+            <div>[ ] <b>${i.nome}</b> <span class="detalhes">(Receita: ${i.qtdVolume} ${i.un})</span></div>
+            <div class="valores">
+                <span style="color:#2980b9; font-weight:bold; margin-right:15px;">Levar: ${i.qtdComprar} un</span>
+                <div style="display:inline-block; text-align:right;">
+                    <span class="sub">R$ ${i.subtotalReal.toFixed(2).replace('.', ',')}</span>
+                    <span class="un">${i.qtdComprar} x R$ ${i.precoUnit.toFixed(2).replace('.', ',')}</span>
+                </div>
+            </div>
+        </li>`;
+            });
+            msg += `</ul><div style="text-align:right; font-weight:bold; color:#c0392b; font-size:16px;">Subtotal a Comprar: R$ ${totalComprar.toFixed(2).replace('.', ',')}</div>`;
+
+            msg += `<h2 style="color:#27ae60; margin-top:30px;">🟢 EM ESTOQUE (Já tenho)</h2><ul>`;
+            if (estoque.length === 0) msg += "<li>Nada marcado em estoque.</li>";
+            else estoque.forEach(i => {
+                msg += `<li>
+            <div>[ok] <b>${i.nome}</b> <span class="detalhes">(Receita: ${i.qtdVolume} ${i.un})</span></div>
+            <div class="valores">
+                <span style="color:#27ae60; font-weight:bold; margin-right:15px;">Separar: ${i.qtdComprar} un</span>
+                <div style="display:inline-block; text-align:right;">
+                    <span class="sub">R$ ${i.subtotalReal.toFixed(2).replace('.', ',')}</span>
+                    <span class="un">${i.qtdComprar} x R$ ${i.precoUnit.toFixed(2).replace('.', ',')}</span>
+                </div>
+            </div>
+        </li>`;
+            });
+            msg += `</ul><div style="text-align:right; font-weight:bold; color:#27ae60; font-size:16px;">Valor do Estoque Utilizado: R$ ${totalEstoque.toFixed(2).replace('.', ',')}</div>`;
+
+            msg += `<div class="totais" style="text-align:right;">CUSTO TOTAL DA OPERAÇÃO: R$ ${(totalComprar + totalEstoque).toFixed(2).replace('.', ',')}</div>`;
+            msg += `</body></html>`;
+
+            const w = window.open("", "_blank"); w.document.write(msg); w.document.close();
+            // Um pequeno delay garante que o CSS carregue antes de abrir a janela de impressão
+            setTimeout(() => { w.print(); }, 200);
+            document.getElementById('modalRevisaoCompras').style.display = 'none';
+        };
