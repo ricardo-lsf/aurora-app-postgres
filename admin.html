@@ -1944,6 +1944,13 @@
 
 
     <script type="module">
+
+        // ============================================================
+        // 0. VARIÁVEIS GLOBAIS E CREDENCIAIS (SEMPRE NO TOPO)
+        // ============================================================
+        const ACCOUNT_ID = "a57c20f3-526a-41f4-8b95-d4cd7cd2e362"; 
+        const API_BASE = "https://aurora-api-zj8e.onrender.com";
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, orderBy, writeBatch, where, getDocs, limit, getDoc, serverTimestamp, increment, collectionGroup, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -2042,7 +2049,7 @@
         let listaComprasCache = [];
 
         // ============================================================
-        // 1. GESTÃO DE ESTOQUE (CÓDIGO ÚNICO E OFICIAL)
+        // 1. GESTÃO DE ESTOQUE (REFATORADO PARA POSTGRESQL API)
         // ============================================================
 
         const TIPOS_PADRAO = ["Aperitivo", "Destilado", "Xarope", "Frutas", "Soft drink", "Outros"];
@@ -2053,49 +2060,83 @@
         let estoqueSortCol = 'produto';
         let estoqueSortAsc = true;
 
-        // --- CARREGAMENTO DO BANCO ---
-        onSnapshot(collection(db, "insumos"), (snap) => {
-            window.catalogoGeral = [];
-            snap.forEach(doc => {
-                window.catalogoGeral.push({ ...doc.data(), id: doc.id });
-            });
+        // --- CARREGAMENTO DO BANCO DE INSUMOS (POSTGRESQL VIA API) ---
+        window.carregarEstoqueDaAPI = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/inventory/${ACCOUNT_ID}`);
+                const data = await res.json();
 
-            // Renderiza catálogo (cima)
-            if (document.getElementById('lista-catalogo')) renderizarCatalogo();
+                if (data.status === "sucesso") {
+                    window.catalogoGeral = data.dados.map(item => {
+                        // MATEMÁTICA CORRIGIDA: Divide o preço da garrafa pelo tamanho dela
+                        const custoGarrafa = parseFloat(item.custo_ultima_embalagem) || 0;
+                        const tamanhoEmb = parseFloat(item.tamanho_embalagem) || 1; // Fallback 1 para não dividir por zero
+                        const custoPorMililitro = custoGarrafa / tamanhoEmb;
 
-            // Renderiza estoque (baixo)
-            renderizarEstoqueFisico();
+                        return {
+                            id: item.id, 
+                            produto: item.insumo,
+                            marca: item.marca || 'S/ Marca', // Marca agora aparece!
+                            tipo: item.tipo || 'Outros',
+                            unMedida: item.unidade,
+                            estoqueAtual: item.estoque_ml_g,
+                            custoPorVol: custoPorMililitro, // Custo real dos centavos!
+                            refVolume: item.tamanho_embalagem, 
+                            refPreco: item.custo_ultima_embalagem
+                        };
+                    });
 
-            if (window.atualizarSelectFichaTecnica) window.atualizarSelectFichaTecnica();
-        });
+                    if (document.getElementById('lista-catalogo')) renderizarCatalogo();
+                    if (typeof renderizarEstoqueFisico === 'function') renderizarEstoqueFisico();
+                    if (window.atualizarSelectFichaTecnica) window.atualizarSelectFichaTecnica();
+                    
+                    console.log("✅ Estoque (com Matemática Corrigida) carregado do Postgres:", window.catalogoGeral);
+                }
+            } catch (error) {
+                console.error("❌ Erro ao carregar o estoque da API:", error);
+            }
+        };
 
-        // --- CARREGAR TIPOS ---
-        async function carregarTipos() {
+        // Dispara o carregamento do estoque assim que a página abrir
+        window.carregarEstoqueDaAPI();
+
+        // --- CARREGAR TIPOS (AGORA 100% POSTGRESQL) ---
+        window.carregarTipos = async () => {
             const select = document.getElementById('insTipo');
-            if (!select) return; // Proteção extra
+            const editSelect = document.getElementById('editInsTipo'); // Pega o do modal também
+            if (!select) return;
 
             try {
-                const docRef = doc(db, "config", "tipos_insumos");
-                const docSnap = await getDoc(docRef);
+                // Bate na nossa nova rota da API!
+                const res = await fetch(`${API_BASE}/ingredient-types/`);
+                const data = await res.json();
 
-                if (docSnap.exists()) listaTiposCache = docSnap.data().lista;
-                else {
-                    listaTiposCache = [...TIPOS_PADRAO];
-                    await setDoc(docRef, { lista: listaTiposCache });
+                if (data.status === "sucesso") {
+                    // Guarda na memória (caso precise usar a variável listaTiposCache em outro lugar)
+                    window.listaTiposCache = data.dados.map(t => t.name);
+                    
+                    // Monta o HTML das opções
+                    const optionsHTML = data.dados.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+                    
+                    // Alimenta os dois Dropdowns ao mesmo tempo!
+                    select.innerHTML = optionsHTML;
+                    if (editSelect) editSelect.innerHTML = optionsHTML;
+                    
+                    console.log("✅ Tipos de Insumo carregados do Postgres!");
                 }
-
-                listaTiposCache.sort();
-                select.innerHTML = listaTiposCache.map(t => `<option value="${t}">${t}</option>`).join('');
-            } catch (e) {
-                console.log("Usando tipos padrão fallback");
+            } catch (error) {
+                console.error("❌ Erro ao carregar tipos:", error);
+                // Fallback de emergência caso a API esteja fora do ar
+                const TIPOS_PADRAO = ["Aperitivo", "Destilado", "Xarope", "Frutas", "Soft drink", "Outros"];
                 select.innerHTML = TIPOS_PADRAO.map(t => `<option value="${t}">${t}</option>`).join('');
             }
-        }
-        // Chama a cada 2s para garantir que pegue o elemento HTML
-        setTimeout(carregarTipos, 1000);
+        };
+
+        // Chama a função (substitua o setTimeout antigo por esta chamada direta)
+        window.carregarTipos();
 
 
-        // --- 1.1 RENDERIZAR CATÁLOGO (CIMA - CARDS COM CLIQUE PARA EDITAR) ---
+        // --- 1.1 RENDERIZAR CATÁLOGO (Mantido seu layout e estilo original) ---
         window.renderizarCatalogo = () => {
             const inputBusca = document.getElementById('busca-catalogo');
             const lista = document.getElementById('lista-catalogo');
@@ -2125,98 +2166,104 @@
                         <button onclick="excluirItemCatalogo('${item.id}', '${nomeCompleto}')" class="btn-trash" style="padding:4px 8px;" title="Excluir Definitivamente">🗑️</button>
                     </div>
                 </div>
-            `;
+                `;
             });
         };
 
 
-        // --- FUNÇÃO PARA ABRIR O MODAL E PREENCHER OS DADOS ---
-        window.abrirModalEdicaoInsumo = (id) => {
-            // Procura o item clicado na memória do sistema
-            const item = window.catalogoGeral.find(i => i.id === id);
-            if (!item) return;
+            // --- FUNÇÃO PARA ABRIR O MODAL E PREENCHER OS DADOS ---
+            window.abrirModalEdicaoInsumo = (id) => {
+                const item = window.catalogoGeral.find(i => i.id === id);
+                if (!item) return;
 
-            // Copia a lista de tipos do formulário principal para o modal
-            document.getElementById('editInsTipo').innerHTML = document.getElementById('insTipo').innerHTML;
+                const editInsTipo = document.getElementById('editInsTipo');
+                const insTipo = document.getElementById('insTipo');
+                if(editInsTipo && insTipo) {
+                    editInsTipo.innerHTML = insTipo.innerHTML;
+                }
 
-            // Preenche todos os campos com as informações que vieram do banco
-            document.getElementById('editInsId').value = item.id;
-            document.getElementById('editInsProd').value = item.produto || '';
-            document.getElementById('editInsMarca').value = item.marca || '';
-            document.getElementById('editInsTipo').value = item.tipo || '';
+                document.getElementById('editInsId').value = item.id;
+                document.getElementById('editInsProd').value = item.produto || '';
+                document.getElementById('editInsMarca').value = item.marca || '';
+                document.getElementById('editInsTipo').value = item.tipo || '';
+                document.getElementById('editInsUnMed').value = item.unMedida || 'ml';
 
-            // Trata o campo de unidade, que pode estar salvo como 'unMedida' ou 'un'
-            document.getElementById('editInsUnMed').value = item.unMedida || item.un || 'ml';
+                // Agora os campos de volume e preço vão carregar perfeitamente!
+                document.getElementById('editInsVolRef').value = item.refVolume || '';
+                document.getElementById('editInsPrecoRef').value = item.refPreco || '';
 
-            document.getElementById('editInsVolRef').value = item.refVolume || '';
-            document.getElementById('editInsPrecoRef').value = item.refPreco || '';
+                document.getElementById('modal-editar-insumo').style.display = 'flex';
+            };
 
-            // Exibe o modal na tela
-            document.getElementById('modal-editar-insumo').style.display = 'flex';
-        };
+            // --- FUNÇÃO PARA SALVAR A EDIÇÃO NO POSTGRESQL (API) ---
+            window.salvarEdicaoInsumo = async () => {
+                const id = document.getElementById('editInsId').value;
+                const produto = document.getElementById('editInsProd').value.trim();
+                const marca = document.getElementById('editInsMarca').value.trim();
+                const tipo = document.getElementById('editInsTipo').value;
+                const unMedida = document.getElementById('editInsUnMed').value;
 
-        // --- FUNÇÃO PARA SALVAR A EDIÇÃO NO FIREBASE ---
-        window.salvarEdicaoInsumo = async () => {
-            const id = document.getElementById('editInsId').value;
-            const produto = document.getElementById('editInsProd').value.trim();
-            const marca = document.getElementById('editInsMarca').value.trim();
-            const tipo = document.getElementById('editInsTipo').value;
-            const unMedida = document.getElementById('editInsUnMed').value;
+                const refVolume = parseFloat(document.getElementById('editInsVolRef').value) || 0;
+                const refPreco = parseFloat(document.getElementById('editInsPrecoRef').value) || 0;
 
-            const refVolume = parseFloat(document.getElementById('editInsVolRef').value) || 0;
-            const refPreco = parseFloat(document.getElementById('editInsPrecoRef').value) || 0;
+                if (!produto) return alert("O nome do produto é obrigatório!");
 
-            if (!produto) return alert("O nome do produto é obrigatório!");
+                // Prepara o pacote para a nossa API Python
+                const payload = {
+                    name: produto,
+                    brand: marca,
+                    type_name: tipo,
+                    measurement_unit: unMedida,
+                    package_quantity: refVolume,
+                    current_cost_price: refPreco
+                };
 
-            // Recalcula automaticamente o custo por ml/g (Crucial para a nossa lista de compras!)
-            let custoPorVol = 0;
-            if (refVolume > 0 && refPreco > 0) {
-                custoPorVol = refPreco / refVolume;
-            }
+                try {
+                    // Chama a rota PUT de edição que criamos no Python
+                    const res = await fetch(`${API_BASE}/ingredients/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-            try {
-                // Atualiza apenas os campos específicos do documento no Firebase
-                const itemRef = doc(db, "insumos", id);
-                await updateDoc(itemRef, {
-                    produto: produto,
-                    marca: marca,
-                    tipo: tipo,
-                    unMedida: unMedida,
-                    refVolume: refVolume,
-                    refPreco: refPreco,
-                    custoPorVol: custoPorVol // Salva o novo valor fracionado
-                });
+                    const result = await res.json();
 
-                // Fecha o modal. A lista vai atualizar sozinha pelo onSnapshot!
-                document.getElementById('modal-editar-insumo').style.display = 'none';
+                    if (res.ok || result.status === "sucesso") {
+                        document.getElementById('modal-editar-insumo').style.display = 'none';
+                        window.carregarEstoqueDaAPI(); // Recarrega a tabela visual instantaneamente
+                        // alert("Insumo atualizado com sucesso!");
+                    } else {
+                        alert("Erro do Servidor: " + result.detail);
+                    }
 
-            } catch (error) {
-                console.error("Erro ao atualizar insumo:", error);
-                alert("Erro ao salvar as alterações. Verifique sua conexão.");
-            }
-        };
+                } catch (error) {
+                    console.error("Erro ao atualizar insumo:", error);
+                    alert("Erro ao salvar as alterações. Verifique sua conexão com a API.");
+                }
+            };
 
 
 
         // --- 1.2 RENDERIZAR ESTOQUE FÍSICO (BAIXO - TABELA COM BOTÃO!) ---
         window.renderizarEstoqueFisico = () => {
-            // Procura a tabela pelo ID que está no seu HTML
             const tbody = document.getElementById('lista-estoque-fisico');
             const spanTotal = document.getElementById('total-valor-estoque');
 
             if (!tbody) return;
             tbody.innerHTML = '';
 
-            // 1.2.1 Filtra saldo positivo
-            let itensComEstoque = window.catalogoGeral.filter(i => (i.estoqueAtual || i.estoque) > 0);
+            // 1.2.1 Filtra saldo positivo (Agora lendo do novo formato)
+            let itensComEstoque = window.catalogoGeral.filter(i => i.estoqueAtual > 0);
 
             // 1.2.2 Prepara para ordenação (Cálculo do Total)
             itensComEstoque = itensComEstoque.map(item => {
-                const qtd = parseFloat(item.estoqueAtual || item.estoque || 0);
+                const qtd = parseFloat(item.estoqueAtual || 0);
+                // O custoPorVol já foi ajustado na função que puxa da API
+                const custo = parseFloat(item.custoPorVol || 0); 
                 return {
                     ...item,
                     estoqueFinal: qtd,
-                    valorTotalEstoque: qtd * (item.custoPorVol || 0)
+                    valorTotalEstoque: qtd * custo
                 };
             });
 
@@ -2246,9 +2293,12 @@
                 somaGeral += custoTotal;
 
                 // Formatação do Volume
-                let volDisplay = `${estoque} ${item.unMedida}`;
+                let volDisplay = `${estoque.toFixed(1)} ${item.unMedida}`;
                 if (item.unMedida === 'ml' && estoque >= 1000) volDisplay = `${(estoque / 1000).toFixed(2)} L`;
                 if (item.unMedida === 'g' && estoque >= 1000) volDisplay = `${(estoque / 1000).toFixed(2)} Kg`;
+
+                // Custo Unitário com fallback para evitar R$ Infinity
+                const displayCusto = isFinite(custoUnit) ? custoUnit.toFixed(2) : "0.00";
 
                 tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee; height: 45px;">
@@ -2256,7 +2306,7 @@
                     <td style="padding:10px;">${item.marca || '-'}</td>
                     <td style="padding:10px;"><span class="catalog-badge">${item.tipo}</span></td>
                     <td style="padding:10px; font-weight:bold; color:#27ae60">${volDisplay}</td>
-                    <td style="padding:10px;">R$ ${custoUnit.toFixed(2)}</td>
+                    <td style="padding:10px;">R$ ${displayCusto}</td>
                     <td style="padding:10px;">R$ ${custoTotal.toFixed(2)}</td>
                     
                     <td style="padding:10px; text-align:center;">
@@ -2283,24 +2333,44 @@
             renderizarEstoqueFisico();
         };
 
+        // ==========================================
+        // NOVAS AÇÕES (APONTANDO PARA A API PYTHON)
+        // ==========================================
+
         // --- AÇÃO: ZERAR SALDO ---
         window.zerarItemEstoque = async (id) => {
-            if (confirm("Deseja remover este item do estoque físico?\n(O saldo será zerado, mas o item continua no catálogo)")) {
+            if (confirm("Deseja remover este item do estoque físico?\n(O saldo será zerado no banco Postgres)")) {
                 try {
-                    await updateDoc(doc(db, "insumos", id), { estoque: 0, estoqueAtual: 0 });
+                    // Manda uma requisição PUT (que precisamos criar no Python se ainda não existir)
+                    const res = await fetch(`${API_BASE}/ingredients/${id}/zero`, { method: 'PUT' });
+                    const result = await res.json();
+                    
+                    if(res.ok) {
+                        // Recarrega os dados do servidor para atualizar a tela
+                        window.carregarEstoqueDaAPI(); 
+                    } else {
+                        alert("Erro da API: " + result.detail);
+                    }
                 } catch (e) {
-                    alert("Erro: " + e.message);
+                    alert("Erro de conexão: " + e.message);
                 }
             }
         };
 
         // --- AÇÃO: EXCLUIR DO SISTEMA ---
         window.excluirDoSistema = async (id) => {
-            if (confirm("⚠️ PERIGO: Excluir do CATÁLOGO GERAL?\nIsso apaga o item de todas as receitas e do estoque.")) {
+            if (confirm("⚠️ PERIGO: Excluir do CATÁLOGO GERAL do Postgres?\nIsso pode quebrar drinks que usam este ingrediente!")) {
                 try {
-                    await deleteDoc(doc(db, "insumos", id));
+                    const res = await fetch(`${API_BASE}/ingredients/${id}`, { method: 'DELETE' });
+                    if(res.ok) {
+                        window.carregarEstoqueDaAPI();
+                    } else {
+                        const result = await res.json();
+                        // Geralmente o Postgres bloqueia se o item estiver numa receita (Foreign Key)
+                        alert("O banco barrou a exclusão: " + (result.detail || "Item em uso."));
+                    }
                 } catch (e) {
-                    alert("Erro: " + e.message);
+                    alert("Erro de conexão: " + e.message);
                 }
             }
         };
@@ -2436,28 +2506,10 @@
 
         // ============================================================
         // 1.5 LÓGICA DE LISTAGEM DE ESTOQUE (ORDENAÇÃO + CÁLCULOS)
+        // Refatorado para PostgreSQL API
         // ============================================================
 
-        window.adicionarNovoTipo = async () => {
-            const novo = prompt("Digite o nome do novo Tipo:");
-            if (!novo) return;
-            const novoFormatado = novo.charAt(0).toUpperCase() + novo.slice(1);
-
-            if (listaTiposCache.includes(novoFormatado)) return alert("Já existe!");
-
-            listaTiposCache.push(novoFormatado);
-            try {
-                await setDoc(doc(db, "config", "tipos_insumos"), { lista: listaTiposCache });
-                carregarTipos();
-                alert(`Tipo "${novoFormatado}" adicionado!`);
-            } catch (e) {
-                alert("Erro ao salvar novo tipo.");
-            }
-        };
-
-
         // 1.5.1 --- LÓGICA DE EXCLUSÃO (MASSIVA E INDIVIDUAL) ---
-
         window.toggleSelecionarTudo = (source) => {
             const checkboxes = document.querySelectorAll('.check-item-catalogo');
             checkboxes.forEach(chk => chk.checked = source.checked);
@@ -2475,7 +2527,35 @@
             }
         };
 
-        // 1.5.2 --- LÓGICA DA CALCULADORA E ENTRADA (MANTIDA) ---
+        // EXCLUSÃO MASSIVA NO POSTGRES
+        window.excluirMassa = async () => {
+            const selecionados = document.querySelectorAll('.check-item-catalogo:checked');
+            if (selecionados.length === 0) return;
+
+            if (!confirm(`Tem certeza que deseja excluir ${selecionados.length} itens do catálogo? (Itens usados em receitas não serão apagados)`)) return;
+
+            let apagados = 0;
+            let travados = 0;
+
+            for (let chk of selecionados) {
+                try {
+                    const res = await fetch(`${API_BASE}/ingredients/${chk.value}`, { method: 'DELETE' });
+                    if(res.ok) {
+                        apagados++;
+                    } else {
+                        travados++;
+                    }
+                } catch (e) {
+                    console.error("Erro ao deletar", chk.value);
+                }
+            }
+
+            alert(`✅ ${apagados} itens excluídos com sucesso.\n⚠️ ${travados} itens foram travados pelo banco (provavelmente estão em uso em receitas).`);
+            window.carregarEstoqueDaAPI();
+        };
+
+
+        // 1.5.2 --- LÓGICA DA CALCULADORA E ENTRADA (AGORA USANDO A API DE COMPRAS) ---
 
         window.abrirModalEntrada = (id, nome) => {
             document.getElementById('modalEntradaEstoque').style.display = 'flex';
@@ -2483,12 +2563,11 @@
             document.getElementById('titulo-entrada-item').innerText = nome;
 
             // Reset Inputs
-            document.getElementById('calc-qtd-emb').value = 1;
-            document.getElementById('calc-und-emb').value = 6;
-            document.getElementById('calc-vol-und').value = '';
-            document.getElementById('calc-valor-total').value = '';
+            if(document.getElementById('calc-qtd-emb')) document.getElementById('calc-qtd-emb').value = 1;
+            if(document.getElementById('calc-und-emb')) document.getElementById('calc-und-emb').value = 6;
+            if(document.getElementById('calc-vol-und')) document.getElementById('calc-vol-und').value = '';
+            if(document.getElementById('calc-valor-total')) document.getElementById('calc-valor-total').value = '';
 
-            // Força recalculo zerado
             window.calcularPrevia();
         };
 
@@ -2502,59 +2581,84 @@
             const lblQtd = document.getElementById('lbl-qtd-emb');
 
             if (mode === 'unidade') {
-                divUnd.style.display = 'none';
-                lblQtd.innerText = "Qtd. Garrafas/Unidades";
-                document.getElementById('calc-und-emb').value = 1;
+                if(divUnd) divUnd.style.display = 'none';
+                if(lblQtd) lblQtd.innerText = "Qtd. Garrafas/Unidades";
+                if(document.getElementById('calc-und-emb')) document.getElementById('calc-und-emb').value = 1;
             } else {
-                divUnd.style.display = 'block';
-                lblQtd.innerText = "Qtd. Caixas/Fardos";
-                document.getElementById('calc-und-emb').value = 6;
+                if(divUnd) divUnd.style.display = 'block';
+                if(lblQtd) lblQtd.innerText = "Qtd. Caixas/Fardos";
+                if(document.getElementById('calc-und-emb')) document.getElementById('calc-und-emb').value = 6;
             }
             window.calcularPrevia();
         };
 
         window.calcularPrevia = () => {
-            const qtdInput = parseFloat(document.getElementById('calc-qtd-emb').value) || 0;
-            const volUnd = parseFloat(document.getElementById('calc-vol-und').value) || 0;
-            const valorTotal = parseFloat(document.getElementById('calc-valor-total').value) || 0;
-            const unMed = document.getElementById('calc-un-med').value;
-            const modo = document.getElementById('calc-tipo').value;
+            const qtdInput = parseFloat(document.getElementById('calc-qtd-emb')?.value) || 0;
+            const volUnd = parseFloat(document.getElementById('calc-vol-und')?.value) || 0;
+            const valorTotal = parseFloat(document.getElementById('calc-valor-total')?.value) || 0;
+            const unMed = document.getElementById('calc-un-med')?.value || 'ml';
+            const modo = document.getElementById('calc-tipo')?.value || 'unidade';
 
-            // LÓGICA CORRIGIDA (Unitário ignora o campo de fardo)
             let itensPorEmbalagem = 1;
             if (modo === 'fardo') {
-                itensPorEmbalagem = parseFloat(document.getElementById('calc-und-emb').value) || 1;
+                itensPorEmbalagem = parseFloat(document.getElementById('calc-und-emb')?.value) || 1;
             }
 
-            const volumeTotal = qtdInput * itensPorEmbalagem * volUnd;
+            // TOTAL DE GARRAFAS que o cara comprou 
+            // (Ex: 2 fardos de 6 = 12 garrafas)
+            const totalGarrafas = qtdInput * itensPorEmbalagem; 
+            
+            // O volume total serve apenas para a prévia visual
+            const volumeTotal = totalGarrafas * volUnd;
             const custoPorVol = volumeTotal > 0 ? (valorTotal / volumeTotal) : 0;
 
             let textoVolume = `${volumeTotal} ${unMed}`;
             if (unMed === 'ml' && volumeTotal >= 1000) textoVolume = `${(volumeTotal / 1000).toFixed(2)} L`;
 
-            document.getElementById('res-vol-total').innerText = textoVolume;
-            document.getElementById('res-custo-ml').innerText = `R$ ${custoPorVol.toFixed(5)} / ${unMed}`;
+            if(document.getElementById('res-vol-total')) document.getElementById('res-vol-total').innerText = textoVolume;
+            if(document.getElementById('res-custo-ml')) document.getElementById('res-custo-ml').innerText = `R$ ${custoPorVol.toFixed(5)} / ${unMed}`;
 
-            return { volumeTotal, custoPorVol, unMed };
+            // O Python espera o TOTAL DE GARRAFAS, não os MLs soltos
+            return { totalGarrafas, valorTotal, volumeTotal };
         };
 
+        // --- ENTRADA DE ESTOQUE VIA POSTGRES (O GOLPE DE MISERICÓRDIA NO FIREBASE) ---
         window.confirmarEntradaEstoque = async () => {
             const id = document.getElementById('id-entrada-item').value;
             const calculo = window.calcularPrevia();
 
-            if (calculo.volumeTotal <= 0) return alert("Preencha o volume corretamente!");
+            if (calculo.totalGarrafas <= 0) return alert("Preencha a quantidade corretamente!");
+            if (calculo.valorTotal <= 0) return alert("Preencha o valor pago (mesmo que seja estimativa)!");
 
-            const itemRef = doc(db, "insumos", id);
+            // Prepara o Payload no formato que o seu Python já estava esperando na Rota 6
+            const payload = {
+                ingredient_id: id,
+                packages_bought: calculo.totalGarrafas,
+                total_paid: calculo.valorTotal,
+                supplier_name: "Lançamento via Painel Web"
+            };
 
-            await updateDoc(itemRef, {
-                estoqueAtual: increment(calculo.volumeTotal),
-                custoPorVol: calculo.custoPorVol,
-                unMedida: calculo.unMed,
-                ultimaEntrada: new Date()
-            });
+            try {
+                // Chama a Rota de Compras que construímos na última vez!
+                const res = await fetch(`${API_BASE}/purchases/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            alert("Entrada realizada com sucesso!");
-            window.fecharModalEntrada();
+                const result = await res.json();
+
+                if (res.ok || result.status === "sucesso") {
+                    alert("✅ Entrada registrada! Estoque e Custos foram atualizados.");
+                    window.fecharModalEntrada();
+                    window.carregarEstoqueDaAPI(); // Recarrega a tela para mostrar os números novos
+                } else {
+                    alert("Erro do Servidor: " + result.detail);
+                }
+            } catch (error) {
+                console.error("Erro ao registrar entrada:", error);
+                alert("Erro de conexão com a API.");
+            }
         };
 
         // ============================================================
@@ -2725,104 +2829,211 @@
         };
 
         // ============================================================
-        // 4. BIBLIOTECA DE DRINKS (CMV, LUCRO E ORDENAÇÃO OK)
+        // 4. BIBLIOTECA DE DRINKS (POSTGRESQL + RENDER API) - COMPLETO
         // ============================================================
-
         window.bibliotecaGlobal = [];
         window.receitaAtual = [];
         window.idDrinkEditando = null;
 
-        // 4.1 CARREGAR DRINKS DO BANCO ---
-        onSnapshot(collection(db, "drinks"), (snap) => {
-            window.bibliotecaGlobal = [];
+        // 4.1 CARREGAR DRINKS DA API ---
+        window.carregarBiblioteca = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/drinks/${ACCOUNT_ID}`);
+                const data = await res.json();
+                
+                if (data.status === "sucesso") {
+                    window.bibliotecaGlobal = data.dados;
+                    renderizarListaVisual();
+                }
+            } catch (e) {
+                console.error("Erro ao carregar biblioteca:", e);
+            }
+        };
+
+        function renderizarListaVisual() {
             const listaVisual = document.getElementById('lista-biblioteca-visual');
-            if (listaVisual) listaVisual.innerHTML = '';
+            if (!listaVisual) return;
+            listaVisual.innerHTML = '';
 
-            snap.forEach(doc => {
-                const d = doc.data();
-                window.bibliotecaGlobal.push({ ...d, id: doc.id });
-            });
-
-            // 4.2 ORDENAÇÃO ALFABÉTICA (Aqui garantimos a ordem)
-            window.bibliotecaGlobal.sort((a, b) => a.nome.localeCompare(b.nome));
-
-            // 4.3 RENDERIZA A LISTA
             window.bibliotecaGlobal.forEach(drink => {
-                if (listaVisual) {
-                    listaVisual.innerHTML += `
+                listaVisual.innerHTML += `
                     <div class="catalog-item" onclick="carregarDrinkParaEdicao('${drink.id}')" style="cursor:pointer; padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                        <div><b>${drink.nome}</b></div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            ${drink.image_url ? `<img src="${drink.image_url}" style="width:30px; height:30px; border-radius:4px; object-fit:cover;">` : ''}
+                            <b>${drink.drink_nome}</b>
+                        </div>
                         <button onclick="excluirDrink('${drink.id}', event)" class="btn-trash" style="border:none; background:none; cursor:pointer;" title="Excluir">🗑️</button>
                     </div>`;
-                }
             });
+        }
 
-            // 4.3.1 Atualiza Orçamento se existir
-            if (typeof window.renderLibOrcamento === 'function') window.renderLibOrcamento();
-        });
-
-        // 4.4 CARREGAR PARA EDIÇÃO ---
-        window.carregarDrinkParaEdicao = (id) => {
+        // 4.2 CARREGAR PARA EDIÇÃO (CORRIGIDO NA AUDITORIA) ---
+        window.carregarDrinkParaEdicao = async (id) => {
             const drink = window.bibliotecaGlobal.find(x => x.id === id);
             if (!drink) return;
+        
+        // 🟢 RAIO-X 1: O que veio no cabeçalho do drink?
+        console.log("DADOS DO DRINK SELECIONADO:", drink);
 
             window.idDrinkEditando = id;
 
-            // 4.4.1 Preenche campos
-            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-            setVal('globalName', drink.nome);
-            setVal('globalImg', drink.imagem || '');
-            setVal('globalTecnica', drink.tecnica || 'Montado');
-            setVal('globalTipoAlcool', drink.tipo || 'Cocktail');
-            setVal('globalClassificacao', drink.classificacao || 'Inesquecíveis');
-            setVal('globalPrice', drink.precoVenda || '');
-            setVal('globalCusto', drink.precoCusto || '');
-            setVal('globalPreparo', drink.preparo || '');
+            // Preenche campos textuais
+            document.getElementById('globalName').value = drink.drink_nome || '';
+            document.getElementById('globalImg').value = drink.image_url || '';
+            document.getElementById('globalPrice').value = drink.preco_venda || '';
+            
+            // Mapeamento corrigido dos Selects e Textareas (Técnica, Categoria, Preparo)
+            if(document.getElementById('globalTecnica')) 
+                document.getElementById('globalTecnica').value = drink.technique || 'Montado';
+            
+            if(document.getElementById('globalTipoAlcool')) 
+                document.getElementById('globalTipoAlcool').value = drink.drink_type || 'Cocktail';
+            
+            if(document.getElementById('globalClassificacao')) 
+                document.getElementById('globalClassificacao').value = drink.category || 'Inesquecíveis';
 
-            // 4.4.2 Carrega Receita (Cópia Segura)
-            if (drink.receita && Array.isArray(drink.receita)) {
-                window.receitaAtual = JSON.parse(JSON.stringify(drink.receita));
-            } else {
-                window.receitaAtual = [];
+            if(document.getElementById('globalPreparo'))
+                document.getElementById('globalPreparo').value = drink.preparation_steps || '';
+
+            // Carrega a imagem no preview
+            if (window.atualizarPreview) {
+                window.atualizarPreview(drink.image_url || '');
             }
 
-            if (window.atualizarPreview) window.atualizarPreview(drink.imagem);
+            try {
+                const res = await fetch(`${API_BASE}/cocktails/${id}/recipe`);
+                const data = await res.json();
 
-            // 4.4.3 Renderiza e Calcula CMV na hora
-            renderizarIngredientesNaTela();
-            window.calcCMV();
+                if (data.status === "sucesso") {
+
+                // 🟢 RAIO-X 2: O que veio na receita vs O que tem no estoque?
+                                console.log("RECEITA VINDO DA API:", data.ingredientes);
+                                console.log("MEU ESTOQUE ATUAL:", window.catalogoGeral);
+
+                    window.receitaAtual = data.ingredientes.map(ing => {
+                        // Cruza com o Estoque (catalogoGeral) para descobrir o R$
+                        // MÁGICA: Procura no estoque pelo NOME (já que a API não mandou o ID)
+                        const infoEstoque = (window.catalogoGeral || []).find(i => 
+                        i.id === ing.ingrediente_id || 
+                        (i.produto && i.produto.toLowerCase() === ing.ingrediente.toLowerCase()));
+
+                        //const infoEstoque = (window.catalogoGeral || []).find(i => i.id === ing.ingrediente_id);
+                        const precoUnitario = infoEstoque ? (parseFloat(infoEstoque.custoPorVol) || 0) : 0;
+                        
+                        // Salva o ID real para podermos salvar a edição do drink depois
+                        const idRealDoBanco = infoEstoque ? infoEstoque.id : (ing.ingrediente_id || "");
+
+                        return {
+                            insumoId: ing.ingrediente_id || ing.id, 
+                            nome: ing.ingrediente,
+                            qtd: ing.quantidade,
+                            unMedida: ing.unidade,
+                            custo: precoUnitario * ing.quantidade
+                        };
+                    });
+                    
+                    window.renderizarIngredientesNaTela();
+                }
+            } catch (e) {
+                console.error("Erro ao carregar receita:", e);
+            }
 
             const btn = document.getElementById('btnSalvarDrink');
             if (btn) { btn.innerText = "🔄 ATUALIZAR"; btn.className = "btn-update-main"; }
         };
 
-        // 4.5 LIMPAR TELA ---
+        // 4.3 LIMPAR TELA E NOVO DRINK ---
         window.limparFormDrink = () => {
             window.idDrinkEditando = null;
 
-            ['globalName', 'globalImg', 'globalPrice', 'globalCusto', 'globalPreparo'].forEach(i => {
-                const el = document.getElementById(i); if (el) el.value = '';
+            ['globalName', 'globalImg', 'globalPrice', 'globalCusto', 'globalPreparo', 'globalClassificacao', 'globalTecnica', 'globalTipoAlcool'].forEach(id => {
+                const el = document.getElementById(id); 
+                if (el) el.value = '';
             });
 
-            // 4.5.1 Reseta display do CMV
             const displayCMV = document.getElementById('cmv-display');
             if (displayCMV) displayCMV.innerHTML = 'CMV: 0.0% | Lucro: R$ 0.00';
 
             window.receitaAtual = [];
-            renderizarIngredientesNaTela();
+            window.renderizarIngredientesNaTela();
             if (window.atualizarPreview) window.atualizarPreview('');
 
             const btn = document.getElementById('btnSalvarDrink');
             if (btn) { btn.innerText = "💾 SALVAR NOVO"; btn.className = "btn-save-main"; }
 
-            document.getElementById('globalName').focus();
+            const inputNome = document.getElementById('globalName');
+            if(inputNome) inputNome.focus();
         };
         window.novoDrink = window.limparFormDrink;
 
-        // 4.6 FUNÇÃO DE CÁLCULO DE CMV E LUCRO ---
+        // 4.4 RENDERIZAR INGREDIENTES NA TELA (CORRIGIDO NA AUDITORIA) ---
+        window.renderizarIngredientesNaTela = () => {
+            const div = document.getElementById('lista-ingredientes');
+            if (!div) return;
+            div.innerHTML = '';
+            let totalReceita = 0;
+
+            if (window.receitaAtual.length === 0) {
+                div.innerHTML = '<small style="color:#999; padding:5px;">Vazio</small>';
+            }
+
+            window.receitaAtual.forEach((item, idx) => {
+                totalReceita += item.custo || 0;
+                div.innerHTML += `
+                <div style="display:flex; justify-content:space-between; padding:5px; border-bottom:1px dashed #eee; font-size:0.9em;">
+                    <span>${item.qtd}${item.unMedida || ''} ${item.nome}</span>
+                    <span>R$ ${(item.custo || 0).toFixed(2)} <b onclick="removerIng(${idx})" style="color:red; cursor:pointer; margin-left:5px;">X</b></span>
+                </div>`;
+            });
+
+            const elCusto = document.getElementById('globalCusto');
+            if (elCusto) elCusto.value = totalReceita.toFixed(2);
+
+            window.calcCMV();
+        };
+
+        // 4.5 ADICIONAR INGREDIENTE (MANUAL) ---
+        window.addIngrediente = () => {
+            const sel = document.getElementById('selInsumo');
+            const qtdEl = document.getElementById('qtdInsumo');
+            const unEl = document.getElementById('unInsumo');
+
+            if (!sel.value || !qtdEl.value) return alert("Preencha insumo e quantidade!");
+            if (typeof catalogoGeral === 'undefined') return alert("Erro: Estoque não carregado.");
+            
+            const item = catalogoGeral.find(i => i.id === sel.value);
+            if (!item) return alert("Item não encontrado.");
+
+            const qtd = parseFloat(qtdEl.value);
+            const unidade = unEl ? unEl.value : 'ml';
+            
+            // Pega o custo real vindo do estoque
+            const precoInsumo = item.custoPorVol || item.preco_unitario || 0;
+
+            window.receitaAtual.push({
+                insumoId: item.id,
+                nome: item.produto || item.nome, 
+                qtd: qtd,
+                unMedida: unidade,
+                custo: precoInsumo * qtd
+            });
+
+            sel.value = "";
+            qtdEl.value = "";
+            sel.focus();
+            window.renderizarIngredientesNaTela();
+        };
+
+        // 4.6 REMOVER INGREDIENTE ---
+        window.removerIng = (i) => { 
+            window.receitaAtual.splice(i, 1); 
+            window.renderizarIngredientesNaTela(); 
+        };
+
+        // 4.7 CALCULAR CMV ---
         window.calcCMV = () => {
-            const precoVenda = parseFloat(document.getElementById('globalPrice').value) || 0;
-            const custoTotal = parseFloat(document.getElementById('globalCusto').value) || 0;
+            const precoVenda = parseFloat(document.getElementById('globalPrice')?.value) || 0;
+            const custoTotal = parseFloat(document.getElementById('globalCusto')?.value) || 0;
             const display = document.getElementById('cmv-display');
 
             if (!display) return;
@@ -2830,123 +3041,108 @@
             if (precoVenda > 0) {
                 const cmvPercent = (custoTotal / precoVenda) * 100;
                 const lucro = precoVenda - custoTotal;
-
-                // Define cor baseada na saúde do lucro (Opcional)
                 const corLucro = lucro > 0 ? '#27ae60' : '#c0392b';
-
                 display.innerHTML = `CMV: ${cmvPercent.toFixed(1)}% | Lucro: <span style="color:${corLucro}">R$ ${lucro.toFixed(2)}</span>`;
             } else {
                 display.innerHTML = `CMV: 0.0% | Lucro: R$ -${custoTotal.toFixed(2)}`;
             }
         };
 
-        // 4.7 EXCLUIR DRINK ---
+        // 4.8 SALVAR OU ATUALIZAR DRINK NO BANCO (POSTGRESQL) ---
+            window.salvarDrinkGlobal = async () => {
+                const nome = document.getElementById('globalName').value.trim();
+                if (!nome) return alert("Nome obrigatório!");
+
+                // 🛑 ESCUDO DE VALIDAÇÃO (Mantido para segurança)
+                const ingredientesInvalidos = window.receitaAtual.filter(ing => !ing.insumoId || ing.insumoId === "");
+                if (ingredientesInvalidos.length > 0) {
+                    const nomesErro = ingredientesInvalidos.map(i => i.nome).join(', ');
+                    alert(`⚠️ Atenção: Os seguintes ingredientes vieram do banco antigo e não possuem ID:\n\n👉 ${nomesErro}\n\nPor favor, exclua eles na lista (no X vermelho) e adicione novamente buscando pela caixa de seleção.`);
+                    return;
+                }
+
+                const payload = {
+                    account_id: ACCOUNT_ID,
+                    name: nome,
+                    preparation_steps: document.getElementById('globalPreparo')?.value || "",
+                    category: document.getElementById('globalClassificacao')?.value || "Inesquecíveis",
+                    technique: document.getElementById('globalTecnica')?.value || "Montado",
+                    drink_type: document.getElementById('globalTipoAlcool')?.value || "Cocktail",
+                    sale_price: parseFloat(document.getElementById('globalPrice')?.value) || 0,
+                    image_url: document.getElementById('globalImg')?.value || "",
+                    recipe: window.receitaAtual.map(ing => ({
+                        ingredient_id: ing.insumoId,
+                        quantity: parseFloat(ing.qtd || 0)
+                    }))
+                };
+
+                try {
+                    // 🔀 A MÁGICA DA BIFURCAÇÃO (POST vs PUT)
+                    let endpoint = `${API_BASE}/cocktails/`;
+                    let metodoHTTP = 'POST'; // Padrão: Criar Novo
+
+                    // Se a variável idDrinkEditando tiver um UUID, estamos Atualizando!
+                    if (window.idDrinkEditando) {
+                        endpoint = `${API_BASE}/cocktails/${window.idDrinkEditando}`;
+                        metodoHTTP = 'PUT'; // Altera o método para Atualização
+                    }
+
+                    const res = await fetch(endpoint, {
+                        method: metodoHTTP,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await res.json();
+
+                    if (res.status === 422) {
+                        console.error("❌ Erro de Validação da API:", result.detail);
+                        alert("Erro de validação! Verifique o console (F12).");
+                        return;
+                    }
+
+                    if (result.status === "sucesso" || res.ok) {
+                        alert(`✅ Drink ${window.idDrinkEditando ? 'atualizado' : 'criado'} com sucesso!`);
+                        window.limparFormDrink();
+                        window.carregarBiblioteca();
+                    } else {
+                        // Trata o erro 400 amigavelmente caso você tente criar dois com mesmo nome
+                        if (result.detail && result.detail.includes("unique_drink_name")) {
+                            alert("⚠️ O banco barrou: Já existe um drink com este nome no seu cardápio!");
+                        } else {
+                            alert("Erro ao salvar: " + (result.detail || "Falha na API"));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro na comunicação:", e);
+                    alert("Erro de conexão com o servidor. Tente novamente.");
+                }
+            };
+
+        // 4.9 EXCLUIR DRINK ---
         window.excluirDrink = async (id, event) => {
             if (event) event.stopPropagation();
             if (confirm("Tem certeza que deseja excluir este drink?")) {
-                await deleteDoc(doc(db, "drinks", id));
-                if (window.idDrinkEditando === id) window.limparFormDrink();
-            }
-        };
-
-        // 4.8 SALVAR ---
-        window.salvarDrinkGlobal = async () => {
-            const nomeEl = document.getElementById('globalName');
-            const nome = nomeEl.value.trim();
-            if (!nome) return alert("Nome obrigatório!");
-
-            if (!window.idDrinkEditando) {
-                const duplicado = window.bibliotecaGlobal.some(d => d.nome.toLowerCase() === nome.toLowerCase());
-                if (duplicado) return alert(`⛔ Já existe um drink chamado "${nome}"!`);
-            }
-
-            const dados = {
-                nome: nome,
-                imagem: document.getElementById('globalImg').value || "",
-                tecnica: document.getElementById('globalTecnica').value,
-                tipo: document.getElementById('globalTipoAlcool').value,
-                classificacao: document.getElementById('globalClassificacao').value,
-                preparo: document.getElementById('globalPreparo').value,
-                precoVenda: parseFloat(document.getElementById('globalPrice').value) || 0,
-                precoCusto: parseFloat(document.getElementById('globalCusto').value) || 0,
-                receita: window.receitaAtual,
-                estoque: 0,
-                dataAtt: new Date()
-            };
-
-            try {
-                if (window.idDrinkEditando) {
-                    await updateDoc(doc(db, "drinks", window.idDrinkEditando), dados);
-                    alert("✅ Drink atualizado!");
-                } else {
-                    await addDoc(collection(db, "drinks"), dados);
-                    alert("✅ Drink criado!");
+                try {
+                    const res = await fetch(`${API_BASE}/cocktails/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        if (window.idDrinkEditando === id) window.limparFormDrink();
+                        window.carregarBiblioteca();
+                    } else {
+                        alert("Erro ao deletar no servidor.");
+                    }
+                } catch (e) {
+                    alert("Erro de conexão: " + e.message);
                 }
-                window.limparFormDrink();
-            } catch (e) {
-                alert("Erro: " + e.message);
             }
         };
-        window.salvarDrink = window.salvarDrinkGlobal;
-
-        // 4.9 ADICIONAR INGREDIENTE (ATUALIZADO COM UNIDADE) ---
-        window.addIngrediente = () => {
-            const sel = document.getElementById('selInsumo');
-            const qtdEl = document.getElementById('qtdInsumo');
-            const unEl = document.getElementById('unInsumo'); // Novo campo
-
-            if (!sel.value || !qtdEl.value) return alert("Preencha insumo e quantidade!");
-
-            if (typeof catalogoGeral === 'undefined') return alert("Erro: Estoque não carregado.");
-            const item = catalogoGeral.find(i => i.id === sel.value);
-            if (!item) return alert("Item não encontrado.");
-
-            const qtd = parseFloat(qtdEl.value);
-            const unidade = unEl ? unEl.value : 'ml'; // Pega a unidade escolhida ou usa 'ml'
-
-            window.receitaAtual.push({
-                insumoId: item.id,
-                nome: item.produto,
-                marca: item.marca || '',
-                qtd: qtd,
-                unMedida: unidade, // Salva a unidade correta
-                custo: (item.custoPorVol || 0) * qtd
-            });
-
-            // Limpa quantidade mas mantém unidade para facilitar digitação rápida
-            sel.value = "";
-            qtdEl.value = "";
-            sel.focus();
-            renderizarIngredientesNaTela();
-        };
-
-        window.renderizarIngredientesNaTela = () => {
-            const div = document.getElementById('lista-ingredientes');
-            if (!div) return;
-            div.innerHTML = '';
-            let total = 0;
-
-            if (window.receitaAtual.length === 0) div.innerHTML = '<small style="color:#999; padding:5px;">Vazio</small>';
-
-            window.receitaAtual.forEach((item, idx) => {
-                total += item.custo;
-                // Exibe a unidade salva (item.unMedida) ao lado da quantidade
-                div.innerHTML += `
-                <div style="display:flex; justify-content:space-between; padding:5px; border-bottom:1px dashed #eee; font-size:0.9em;">
-                    <span>${item.qtd}${item.unMedida} ${item.nome}</span>
-                    <span>R$ ${item.custo.toFixed(2)} <b onclick="removerIng(${idx})" style="color:red; cursor:pointer; margin-left:5px;">X</b></span>
-                </div>`;
-            });
-
-            const elCusto = document.getElementById('globalCusto');
-            if (elCusto) elCusto.value = total.toFixed(2);
-
-            window.calcCMV();
-        };
-
-        window.removerIng = (i) => { window.receitaAtual.splice(i, 1); renderizarIngredientesNaTela(); };
-        window.loadDrink = window.carregarDrinkParaEdicao;
         window.delDrinkGlob = window.excluirDrink;
+        window.loadDrink = window.carregarDrinkParaEdicao;
+
+        // ==========================================
+        // INICIALIZA A BIBLIOTECA AO ABRIR A PÁGINA
+        // ==========================================
+        window.carregarBiblioteca();
 
         // ============================================================
         // 5. EVENTOS
@@ -3621,9 +3817,6 @@
     // ============================================================
     // MÓDULO: MONTAR CARDÁPIO (POSTGRESQL)
     // ============================================================
-    
-    // O "Crachá" da sua empresa no banco de dados
-    const ACCOUNT_ID = "a57c20f3-526a-41f4-8b95-d4cd7cd2e362"; 
 
     // 1. Traz o catálogo do banco e desenha as caixinhas para marcar
     window.carregarCatalogoGlobal = async () => {

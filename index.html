@@ -243,19 +243,38 @@
         };
 
         
+        // --- RADAR DE EVENTOS (SUBSTITUI O ONSNAPSHOT DO FIREBASE) ---
+        let intervaloMonitoramento;
 
-        function monitorarEvento(id){
-            onSnapshot(doc(db,"eventos",id),(s)=>{
-                if(s.exists()){
-                    const d=s.data(); eventoStatus=d.status||'aberto';
-                    const ban=document.getElementById('evento-fechado-msg'); const btns=document.querySelectorAll('.btn-circle');
-                    if(eventoStatus==='fechado'){ ban.style.display='block'; btns.forEach(b=>b.disabled=true); } else { ban.style.display='none'; btns.forEach(b=>b.disabled=false); }
-                    if(d.resetSignal && d.resetSignal!=ultimoReset){ ultimoReset=d.resetSignal; localStorage.setItem('last_reset_signal',d.resetSignal); counts={}; localLogs=[]; localStorage.removeItem('counts_ev_'+eventoID); localStorage.removeItem('logs_ev_'+eventoID); renderizar(); carregarLogsAntigos(); alert("Reiniciado!"); }
+        function monitorarEvento(idPostgres) {
+            // Limpa o radar antigo se houver
+            if (intervaloMonitoramento) clearInterval(intervaloMonitoramento);
+
+            // Cria um radar que pergunta o status da festa a cada 30 segundos
+            intervaloMonitoramento = setInterval(async () => {
+                try {
+                    const res = await fetch(`https://aurora-api-zj8e.onrender.com/events/${idPostgres}/status`);
+                    const dados = await res.json();
+
+                    if (dados.status === "sucesso") {
+                        eventoStatus = dados.evento.status || 'aberto';
+                        const ban = document.getElementById('evento-fechado-msg'); 
+                        const btns = document.querySelectorAll('.btn-circle');
+                        
+                        if (eventoStatus === 'fechado') { 
+                            ban.style.display = 'block'; 
+                            btns.forEach(b => b.disabled = true); 
+                        } else { 
+                            ban.style.display = 'none'; 
+                            btns.forEach(b => b.disabled = false); 
+                        }
+                    }
+                } catch (e) {
+                    console.log("Radar de evento sem conexão no momento...");
                 }
-            });
+            }, 30000); // 30.000 ms = 30 segundos
         }
 
-        // --- MOTOR DE RECEPÇÃO: BUSCAR FESTAS ABERTAS ---
         // --- MOTOR DE RECEPÇÃO: BUSCAR FESTAS ABERTAS ---
         // Alterado para 'async function' para o navegador carregar primeiro!
         async function buscarEventosAtivos() {
@@ -312,6 +331,7 @@
             
             // 5. Manda buscar o cardápio no banco
             carregarDrinks(idPostgres); 
+            monitorarEvento(idPostgres);
         }
 
         // --- MOTOR DE SAÍDA: TROCAR DE FESTA ---
@@ -331,50 +351,73 @@
         };
 
 
-        // --- FUNÇÃO MUDAR (Controlador + / -) ---
         // --- FUNÇÃO MUDAR (ATUALIZADA COM BAIXA DE ESTOQUE) ---
-    // --- NOVO MOTOR DE VENDAS E ESTORNOS (POSTGRESQL + RENDER) ---
-    // --- NOVO MOTOR DE VENDAS E ESTORNOS (POSTGRESQL + RENDER) ---
-    window.mudar = async (id, q) => {
-    if (!eventoID || eventoStatus === 'fechado') return;
-    const d = drinks.find(x => x.id === id);
-    if (!d) return;
+        // --- NOVO MOTOR DE VENDAS E ESTORNOS (POSTGRESQL + API PYTHON) ---
+        window.mudar = async (id, q) => {
+            if (!eventoID || eventoStatus === 'fechado') return;
+            const d = drinks.find(x => x.id === id);
+            if (!d) return;
 
-    if (q > 0 && d.estoque <= 0) return navigator.vibrate(200); 
-    if (q < 0 && (!counts[id] || counts[id] <= 0)) return;
+            if (q > 0 && d.estoque <= 0) return navigator.vibrate(200); 
+            if (q < 0 && (!counts[id] || counts[id] <= 0)) return;
 
-    if (!counts[id]) counts[id] = 0;
-    counts[id] += q;
-    localStorage.setItem('counts_ev_' + eventoID, JSON.stringify(counts));
-    
-    renderizar();
-    if (q > 0) navigator.vibrate(50);
-    
-    try {
-        // Pega o nome do bartender (tirando os espaços e codificando para o link não quebrar)
-        const nomeSeguro = encodeURIComponent(usuarioAtual);
+            // Atualiza a tela imediatamente (sensação de rapidez pro bartender)
+            if (!counts[id]) counts[id] = 0;
+            counts[id] += q;
+            localStorage.setItem('counts_ev_' + eventoID, JSON.stringify(counts));
+            
+            renderizar();
+            if (q > 0) navigator.vibrate(50);
+            
+            try {
+                if (q > 0) {
+                    // VENDA (+1): Chama a Rota Mestra que criamos no Python
+                    const payloadVenda = {
+                        event_id: ID_FESTA_POSTGRES,
+                        cocktail_id: id,
+                        price: d.precoVenda || 0.00, // Se for Open Bar, manda 0 ou o preço do drink
+                        user_name: usuarioAtual
+                    };
 
-        if (q > 0) {
-            // VENDA: Agora manda o nome do bartender na URL
-            const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/events/${ID_FESTA_POSTGRES}/sell/${id}?user_name=${nomeSeguro}`, { method: 'POST' });
-            if (!resposta.ok) throw new Error("Erro ao registrar a venda.");
-        } else {
-            // ESTORNO: Fica igual, pois o estorno só apaga a última linha
-            const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/events/${ID_FESTA_POSTGRES}/cancel/${id}`, { method: 'POST' });
-            if (!resposta.ok) throw new Error("Erro ao registrar o estorno.");
-        }
-    } catch (e) {
-        console.error("Erro no BD:", e);
-        counts[id] -= q;
-        localStorage.setItem('counts_ev_' + eventoID, JSON.stringify(counts));
-        renderizar();
-        alert("Erro de conexão. Ação desfeita.");
-    }
-};
+                    const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/sales/`, { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadVenda)
+                    });
+                    
+                    if (!resposta.ok) throw new Error("Erro ao registrar a venda.");
+                    
+                    // Adiciona no histórico de log da tela
+                    adicionarLog(d.nome, 1);
 
-// --- NOVO MOTOR: BUSCANDO DO POSTGRESQL VIA API PYTHON ---
-// --- NOVO MOTOR: BUSCANDO O CARDÁPIO DO EVENTO NO POSTGRESQL ---
-// --- NOVO MOTOR: BUSCANDO O CARDÁPIO NO POSTGRESQL ---
+                } else {
+                    // ESTORNO (-1): Chama a Rota de Cancelamento
+                    const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/sales/cancel`, { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            event_id: ID_FESTA_POSTGRES,
+                            cocktail_id: id,
+                            user_name: usuarioAtual
+                        })
+                    });
+                    
+                    if (!resposta.ok) throw new Error("Erro ao registrar o estorno.");
+                    
+                    // Adiciona no histórico de log da tela
+                    adicionarLog(d.nome, -1);
+                }
+            } catch (e) {
+                console.error("Erro na API:", e);
+                // Se der erro de internet, desfaz a contagem na tela
+                counts[id] -= q;
+                localStorage.setItem('counts_ev_' + eventoID, JSON.stringify(counts));
+                renderizar();
+                alert("Erro de conexão. A venda não foi registrada no sistema.");
+            }
+        };
+
+// --- NOVO MOTOR: BUSCANDO O CARDÁPIO DO EVENTO NO POSTGRESQL VIA API PYTHON---
 async function carregarDrinks(id_firebase) {
     try {
         console.log(`Buscando cardápio no banco relacional...`);
@@ -515,62 +558,6 @@ async function carregarDrinks(id_firebase) {
                     }
                 }
             });
-        }
-
-        // --- NOVO: GERENCIADOR DE ESTOQUE GLOBAL (INSUMOS) ---
-        async function gerenciarEstoqueInsumos(drink, operacao) {
-            // operacao: 1 para Venda (Baixar), -1 para Cancelamento (Devolver)
-            // Se vendeu (+1), precisamos tirar do estoque (increment -qtd)
-            // Se cancelou (-1), precisamos devolver (increment +qtd)
-            
-            console.log(`📦 Atualizando estoque físico para: ${drink.nome} (${operacao > 0 ? 'Baixa' : 'Estorno'})`);
-
-            let receita = drink.ingredientes || drink.receita;
-
-            // Se a receita não veio no objeto, busca na biblioteca pelo ID Original
-            if ((!receita || receita.length === 0) && drink.idOriginal) {
-                try {
-                    const snap = await getDoc(doc(db, "drinks", drink.idOriginal));
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        receita = data.ingredientes || data.receita;
-                    }
-                } catch (e) { console.error("Erro ao buscar ficha técnica:", e); }
-            }
-
-            if (!receita || !Array.isArray(receita)) return;
-
-            const batch = writeBatch(db);
-            let itensAfetados = 0;
-
-            receita.forEach(item => {
-                // Pega o ID do insumo (insumoId é o padrão novo, id é o antigo)
-                const idInsumo = item.insumoId || item.id;
-                
-                if (idInsumo) {
-                    const qtdReceita = parseFloat(item.qtd) || 0;
-                    
-                    if (qtdReceita > 0) {
-                        const refInsumo = doc(db, "insumos", idInsumo);
-                        
-                        // A MÁGICA MATEMÁTICA:
-                        // Se operacao é 1 (Venda) -> Multiplicador deve ser -1 (para baixar)
-                        // Se operacao é -1 (Estorno) -> Multiplicador deve ser 1 (para devolver)
-                        const fator = operacao * -1; 
-                        const qtdFinal = qtdReceita * fator;
-
-                        batch.update(refInsumo, { 
-                            estoqueAtual: increment(qtdFinal) 
-                        });
-                        itensAfetados++;
-                    }
-                }
-            });
-
-            if (itensAfetados > 0) {
-                await batch.commit();
-                console.log(`✅ Estoque atualizado! ${itensAfetados} insumos processados.`);
-            }
         }
 
         function adicionarLog(n,q){const i={n,q,h:new Date().toLocaleTimeString().substring(0,5),u:usuarioAtual};localLogs.unshift(i);if(localLogs.length>30)localLogs.pop();localStorage.setItem('logs_ev_'+eventoID,JSON.stringify(localLogs));renderLog(i,true);}
