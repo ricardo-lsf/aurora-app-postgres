@@ -195,9 +195,10 @@
 
         // --- MOTOR DE LOGIN: VERIFICA NO POSTGRESQL ---
         window.fazerLogin = async () => {
-            const telInput = document.getElementById("telefone-login");
-            const tel = telInput.value.replace(/\D/g, ''); // Limpa qualquer máscara ou espaço
-
+            // A CORREÇÃO: Usando o ID correto do HTML (loginPhone)
+            const telInput = document.getElementById("loginPhone"); 
+            const tel = telInput.value.replace(/\D/g, ''); 
+            
             if (tel.length < 10) {
                 alert("Por favor, digite um telefone válido com DDD.");
                 return;
@@ -228,7 +229,7 @@
                     
                     // Atualiza a interface
                     document.getElementById('user-display').innerText = "👤 " + usuarioAtual;
-                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('login-overlay').style.display = 'none'; // <-- NOME CORRIGIDO!
                     
                     // Puxa o calendário (Recepção VIP)!
                     buscarEventosAtivos();
@@ -598,6 +599,19 @@ function atualizarStatusConexao() {
     window.addEventListener('load', atualizarStatusConexao);
     window.addEventListener('online', atualizarStatusConexao);
     window.addEventListener('offline', atualizarStatusConexao);
+
+
+// if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+
+    // --- CÓDIGO NUCLEAR: EXTERMINADOR DE SERVICE WORKERS ANTIGOS ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log("💀 Fantasma do Service Worker antigo foi eliminado!");
+                }
+            });
+        }
 
     </script>
 </body>
