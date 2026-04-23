@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDS - Aurora Produção</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; background: #f4f6f8; color: #333; height: 100vh; overflow: hidden; }
+
+        /* TELA DE SELEÇÃO (O CADEADO) */
+        #tela-selecao { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #2c3e50; color: white; text-align: center; padding: 20px; }
+        .btn-evento-ativo { background: #27ae60; color: white; border: none; padding: 20px; margin: 10px; border-radius: 10px; font-size: 1.2em; font-weight: bold; cursor: pointer; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s; }
+        .btn-evento-ativo:hover { transform: translateY(-3px); background: #2ecc71; }
+
+        /* KDS HEADER */
+        .kds-topbar { background: #1a252f; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .btn-desvincular { background: #c0392b; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* KDS GRID */
+        .kds-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; height: calc(100vh - 70px); padding: 15px; }
+        @media (max-width: 900px) { .kds-container { grid-template-columns: 1fr; height: auto; overflow-y: auto; } body { overflow: auto; } }
+        
+        .kds-column { background: #eef2f7; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .kds-header { padding: 12px; color: white; font-weight: bold; text-align: center; font-size: 1.1em; }
+        .col-pendente .kds-header { background: #f39c12; }
+        .col-preparo .kds-header { background: #3498db; }
+        .col-pronto .kds-header { background: #27ae60; }
+        
+        .kds-body { flex: 1; padding: 10px; overflow-y: auto; }
+
+        /* CARDS DE PEDIDO */
+        .order-card { background: white; border-radius: 6px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid transparent; animation: slideIn 0.3s; }
+        .order-card.new { border-left-color: #f39c12; }
+        .order-card.doing { border-left-color: #3498db; }
+        .order-card.done { border-left-color: #27ae60; opacity: 0.8; }
+
+        .order-meta { display: flex; justify-content: space-between; font-size: 0.85em; color: #7f8c8d; margin-bottom: 5px; }
+        .order-client { font-weight: bold; font-size: 1.2em; color: #2c3e50; }
+        .order-items { margin: 10px 0; border-top: 1px dashed #eee; padding-top: 8px; }
+        .order-item { font-size: 1.1em; padding: 3px 0; }
+        
+        .order-actions { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-kds { flex: 1; height: 40px; font-size: 0.95em; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-kds:hover { opacity: 0.9; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="tela-selecao">
+        <h1 style="margin-bottom: 5px;">📺 Configuração do KDS</h1>
+        <p style="color: #bdc3c7; margin-bottom: 30px;">A qual evento este tablet pertence hoje?</p>
+        <div id="lista-eventos-ativos">
+            <p>Buscando festas no radar...</p>
+        </div>
+    </div>
+
+    <div id="tela-kds" style="display: none;">
+        <div class="kds-topbar">
+            <div>
+                <span style="font-size: 1.2em; font-weight: bold;" id="kds-nome-evento">Carregando Evento...</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <select id="kdsOperador" style="padding: 8px; border-radius: 4px; font-weight: bold;">
+                    <option value="">Quem está operando?</option>
+                </select>
+                <button onclick="desvincularTablet()" class="btn-desvincular">🔌 Trocar Evento</button>
+            </div>
+        </div>
+
+        <div class="kds-container">
+            <div class="kds-column col-pendente">
+                <div class="kds-header">AGUARDANDO (<span id="count-pendente">0</span>)</div>
+                <div class="kds-body" id="list-pendente"></div>
+            </div>
+
+            <div class="kds-column col-preparo">
+                <div class="kds-header">PREPARANDO (<span id="count-preparo">0</span>)</div>
+                <div class="kds-body" id="list-preparo"></div>
+            </div>
+
+            <div class="kds-column col-pronto">
+                <div class="kds-header">PRONTOS / ENTREGUES</div>
+                <div class="kds-body" id="list-pronto"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // ==========================================
+        // 1. CREDENCIAIS E FIREBASE
+        // ==========================================
+        const API_BASE = "https://aurora-api-zj8e.onrender.com";
+        const CHAVE_MEMORIA = 'aurora_kds_evento_id';
+        const CHAVE_NOME = 'aurora_kds_evento_nome';
+        let eventoAtualID = null;
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, orderBy, updateDoc, doc, getDoc, writeBatch, getDocs, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ⚠️ SUAS CREDENCIAIS DO FIREBASE (Extraídas do Admin)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBu8y9RQMv9fbxORcRLAZN4OlA1IEXyZUU",
+            authDomain: "aurora-bar-system.firebaseapp.com",
+            projectId: "aurora-bar-system",
+            storageBucket: "aurora-bar-system.firebasestorage.app",
+            messagingSenderId: "380441809814",
+            appId: "1:380441809814:web:ad008f37d30a5b0abe03b7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ==========================================
+        // 2. LÓGICA DO CADEADO (INICIALIZAÇÃO)
+        // ==========================================
+        async function checarCadeado() {
+            eventoAtualID = localStorage.getItem(CHAVE_MEMORIA);
+            const nomeEvento = localStorage.getItem(CHAVE_NOME);
+
+            if (eventoAtualID) {
+                // Já tem dono! Abre a cozinha
+                document.getElementById('tela-selecao').style.display = 'none';
+                document.getElementById('tela-kds').style.display = 'block';
+                document.getElementById('kds-nome-evento').innerText = `🍸 ${nomeEvento}`;
+                
+                carregarOperadores();
+                iniciarListenerPedidos();
+            } else {
+                // Não tem dono! Abre o radar
+                document.getElementById('tela-selecao').style.display = 'flex';
+                document.getElementById('tela-kds').style.display = 'none';
+                buscarEventosNoRadar();
+            }
+        }
+
+        // Bate na API Python para ver quem está com is_active = TRUE
+        async function buscarEventosNoRadar() {
+            const divLista = document.getElementById('lista-eventos-ativos');
+            try {
+                const resposta = await fetch(`${API_BASE}/eventos-ativos`);
+                const data = await resposta.json();
+
+                if (!data.dados || data.dados.length === 0) {
+                    divLista.innerHTML = "<h3>Nenhum evento ABERTO no momento.</h3><p style='color:#7f8c8d;'>Vá ao Painel Admin e clique em 'Ativar no App'.</p>";
+                    return;
+                }
+
+                let botoesHtml = "";
+                data.dados.forEach(ev => {
+                    botoesHtml += `<button class="btn-evento-ativo" onclick="window.vincularTablet('${ev.id}', '${ev.event_name}')">📡 Conectar em:<br>${ev.event_name}</button>`;
+                });
+                divLista.innerHTML = botoesHtml;
+
+            } catch (e) {
+                divLista.innerHTML = "<p style='color:#e74c3c;'>Erro ao conectar com o Servidor Central.</p>";
+            }
+        }
+
+        window.vincularTablet = (id, nome) => {
+            localStorage.setItem(CHAVE_MEMORIA, id);
+            localStorage.setItem(CHAVE_NOME, nome);
+            location.reload();
+        };
+
+        window.desvincularTablet = () => {
+            const pin = prompt("🔒 ÁREA RESTRITA\nDigite o PIN do Gerente para desconectar este KDS:");
+            if (pin === "1234") { // PIN FIXO (Pode alterar para a senha que a equipe usa)
+                localStorage.removeItem(CHAVE_MEMORIA);
+                localStorage.removeItem(CHAVE_NOME);
+                location.reload();
+            } else if (pin !== null) {
+                alert("❌ PIN Incorreto.");
+            }
+        };
+
+        // Carrega equipe para assinar quem fez o drink
+        async function carregarOperadores() {
+            const sel = document.getElementById('kdsOperador');
+            try {
+                const snap = await getDocs(collection(db, "equipe"));
+                snap.forEach(d => {
+                    sel.innerHTML += `<option value="${d.data().nome}">${d.data().nome}</option>`;
+                });
+            } catch(e) { console.error("Erro ao carregar equipe", e); }
+        }
+
+        // ==========================================
+        // 3. MOTOR DO KDS (FILA DE PEDIDOS)
+        // ==========================================
+        let kdsUnsubscribe = null;
+
+        function iniciarListenerPedidos() {
+            if (!eventoAtualID) return;
+
+            const q = query(
+                collection(db, "eventos", eventoAtualID, "pedidos"),
+                where("status", "in", ["Pendente", "Preparando", "Pronto"]),
+                orderBy("data", "asc")
+            );
+
+            kdsUnsubscribe = onSnapshot(q, (snap) => {
+                const cols = {
+                    'Pendente': document.getElementById('list-pendente'),
+                    'Preparando': document.getElementById('list-preparo'),
+                    'Pronto': document.getElementById('list-pronto')
+                };
+
+                let counts = { 'Pendente': 0, 'Preparando': 0, 'Pronto': 0 };
+
+                cols['Pendente'].innerHTML = '';
+                cols['Preparando'].innerHTML = '';
+                cols['Pronto'].innerHTML = '';
+
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    p.id = doc.id;
+                    counts[p.status]++;
+
+                    const card = criarCardKDS(p);
+                    if (cols[p.status]) cols[p.status].appendChild(card);
+                });
+
+                document.getElementById('count-pendente').innerText = counts['Pendente'];
+                document.getElementById('count-preparo').innerText = counts['Preparando'];
+            });
+        }
+
+        function criarCardKDS(p) {
+            const div = document.createElement('div');
+            let classeStatus = p.status === 'Pendente' ? 'new' : p.status === 'Preparando' ? 'doing' : 'done';
+            div.className = `order-card ${classeStatus}`;
+
+            const hora = p.data ? p.data.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+            
+            let itensHtml = p.itens.map(i => `<div class="order-item"><span><b>${i.qtd}x</b> ${i.nome}</span></div>`).join('');
+
+            let botoes = '';
+            if (p.status === 'Pendente') {
+                botoes = `<button onclick="window.moverPedido('${p.id}', 'Preparando')" class="btn-kds" style="background:#3498db; color:white;">🔥 BORA (Preparar)</button>`;
+            } else if (p.status === 'Preparando') {
+                botoes = `
+                    <div style="font-size:0.8em; color:#666; margin-bottom:5px; width:100%; text-align:center;">Resp: <b>${p.bartender || '?'}</b></div>
+                    <button onclick="window.moverPedido('${p.id}', 'Pronto')" class="btn-kds" style="background:#27ae60; color:white;">✅ PRONTO</button>
+                `;
+            } else if (p.status === 'Pronto') {
+                botoes = `<button onclick="window.finalizarPedido('${p.id}')" class="btn-kds" style="background:#7f8c8d; color:white;">🚀 ENTREGUE (Baixar Estoque)</button>`;
+            }
+
+            div.innerHTML = `
+                <div class="order-meta"><span>🕒 ${hora}</span><span>#${p.id.substr(-4).toUpperCase()}</span></div>
+                <div class="order-client">${p.cliente} <small>(${p.origem || 'App'})</small></div>
+                <div class="order-items">${itensHtml}</div>
+                <div class="order-actions" style="flex-wrap: wrap;">${botoes}</div>
+            `;
+            return div;
+        }
+
+        // ==========================================
+        // 4. AÇÕES DOS BOTÕES E BAIXA TÉCNICA
+        // ==========================================
+        window.moverPedido = async (id, novoStatus) => {
+            const dados = { status: novoStatus };
+
+            if (novoStatus === 'Preparando') {
+                const operador = document.getElementById('kdsOperador').value;
+                if (!operador) return alert("⚠️ Selecione SEU NOME no topo da tela antes de pegar o pedido!");
+                dados.bartender = operador;
+            }
+
+            await updateDoc(doc(db, "eventos", eventoAtualID, "pedidos", id), dados);
+        };
+
+        window.finalizarPedido = async (id) => {
+            const docRef = doc(db, "eventos", eventoAtualID, "pedidos", id);
+            const snap = await getDoc(docRef);
+            if (!snap.exists()) return;
+            
+            const pedido = snap.data();
+            if (!confirm('Confirmar entrega e baixar estoque para ' + pedido.cliente + '?')) return;
+
+            const batch = writeBatch(db);
+
+            // 1. Processar Baixa e Vendas
+            for (const item of pedido.itens) {
+                // Acha os custos no cardápio da festa
+                const qCardapio = query(collection(db, "eventos", eventoAtualID, "cardapio"), where("nome", "==", item.nome));
+                const snapCardapio = await getDocs(qCardapio);
+                let preco = 0, custo = 0;
+                
+                if (!snapCardapio.empty) {
+                    preco = snapCardapio.docs[0].data().precoVenda || 0;
+                    custo = snapCardapio.docs[0].data().precoCusto || 0;
+                }
+
+                const qtdInt = parseInt(item.qtd) || 1;
+
+                // Registra a Venda
+                for (let i = 0; i < qtdInt; i++) {
+                    const vendaRef = doc(collection(db, "eventos", eventoAtualID, "vendas"));
+                    batch.set(vendaRef, {
+                        drink: item.nome, preco: preco, custo: custo,
+                        usuario: pedido.bartender || 'KDS', cliente: pedido.cliente || 'Balcão',
+                        hora: new Date(), origem: 'KDS'
+                    });
+                }
+
+                // GATILHO DA BAIXA FÍSICA NO FIREBASE
+                await baixarEstoque(item.nome, qtdInt, batch);
+            }
+
+            // 2. Atualiza Status do Pedido
+            batch.update(docRef, { status: 'Entregue', entregueEm: new Date() });
+            
+            await batch.commit();
+        };
+
+        // Extraído e isolado para funcionar perfeito aqui
+        async function baixarEstoque(nomeDrink, quantidadeVendida, mainBatch) {
+            let q = query(collection(db, "drinks"), where("nome", "==", nomeDrink));
+            let snap = await getDocs(q);
+            if (snap.empty) {
+                q = query(collection(db, "drinks"), where("produto", "==", nomeDrink));
+                snap = await getDocs(q);
+            }
+
+            if (snap.empty) {
+                console.warn(`⚠️ Receita do drink "${nomeDrink}" não encontrada. Estoque não baixado.`);
+                return;
+            }
+
+            const ficha = snap.docs[0].data();
+            const receitaAtiva = ficha.ingredientes || ficha.receita;
+
+            if (!receitaAtiva || !Array.isArray(receitaAtiva)) return;
+
+            receitaAtiva.forEach(item => {
+                const idInsumo = item.insumoId || item.id;
+                if (!idInsumo) return;
+
+                const qtdTotal = (parseFloat(item.qtd) || 0) * quantidadeVendida;
+                if (qtdTotal > 0) {
+                    const refInsumo = doc(db, "insumos", idInsumo);
+                    mainBatch.update(refInsumo, {
+                        estoqueAtual: increment(-qtdTotal),
+                        ultimaSaida: new Date()
+                    });
+                }
+            });
+        }
+
+        // Dá a partida
+        document.addEventListener('DOMContentLoaded', checarCadeado);
+    </script>
+</body>
+</html>

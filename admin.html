@@ -623,108 +623,7 @@
             /* Sombra suave para separar */
         }
 
-        /* ESTILOS KDS (NOVO V64) */
-        .kds-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            height: calc(100vh - 140px);
-        }
-
-        .kds-column {
-            background: #eef2f7;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .kds-header {
-            padding: 10px;
-            color: white;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .col-pendente .kds-header {
-            background: #f39c12;
-        }
-
-        .col-preparo .kds-header {
-            background: #3498db;
-        }
-
-        .col-pronto .kds-header {
-            background: #27ae60;
-        }
-
-        .kds-body {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-        }
-
-        .order-card {
-            background: white;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-left: 5px solid transparent;
-            animation: slideIn 0.3s;
-        }
-
-        .order-card.new {
-            border-left-color: #f39c12;
-        }
-
-        .order-card.doing {
-            border-left-color: #3498db;
-        }
-
-        .order-card.done {
-            border-left-color: #27ae60;
-            opacity: 0.8;
-        }
-
-        .order-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8em;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-
-        .order-client {
-            font-weight: bold;
-            font-size: 1.1em;
-            color: #2c3e50;
-        }
-
-        .order-items {
-            margin: 10px 0;
-            border-top: 1px dashed #eee;
-            padding-top: 5px;
-        }
-
-        .order-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 2px 0;
-        }
-
-        .order-actions {
-            display: flex;
-            gap: 5px;
-            margin-top: 10px;
-        }
-
-        .btn-kds {
-            flex: 1;
-            height: 35px;
-            font-size: 0.9em;
-        }
-
+        
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -1125,9 +1024,9 @@
             <div class="menu-label">Gestão Principal</div>
             <a onclick="showView('view-eventos', this)" class="menu-item active"><span class="menu-icon">📅</span>
                 Eventos</a>
-            <a onclick="showView('view-kds', this); iniciarKDS()" class="menu-item"><span class="menu-icon">🖥️</span>
-                KDS / Produção</a> <a onclick="showView('view-orcamentos', this)" class="menu-item"><span
-                    class="menu-icon">📑</span> Orçamentos</a>
+            <a href="kds.html" target="_blank" class="menu-item"><span class="menu-icon">🖥️</span> KDS / Produção</a>
+            <a onclick="showView('view-orcamentos', this)" class="menu-item"><span
+                class="menu-icon">📑</span> Orçamentos</a>
             <a onclick="showView('view-equipe', this)" class="menu-item"><span class="menu-icon">👥</span> Equipe</a>
             <div class="menu-label">Cadastros</div>
             <a onclick="showView('view-biblioteca', this)" class="menu-item"><span class="menu-icon">🍹</span>
@@ -1260,36 +1159,6 @@
                         <button onclick="excluirEventoAtual()" class="btn-delete-event">🗑️ EXCLUIR EVENTO
                             PERMANENTEMENTE</button>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-kds" class="view-section">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2 style="margin:0; border:none;">🖥️ Fila de Produção</h2>
-                <div>
-                    <span style="font-weight:bold;">Quem está operando?</span>
-                    <select id="kdsOperador"
-                        style="padding:5px; border:1px solid #3498db; border-radius:4px; font-weight:bold; color:#2c3e50;">
-                        <option value="">Selecione...</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="kds-container">
-                <div class="kds-column col-pendente">
-                    <div class="kds-header">AGUARDANDO (<span id="count-pendente">0</span>)</div>
-                    <div class="kds-body" id="list-pendente"></div>
-                </div>
-
-                <div class="kds-column col-preparo">
-                    <div class="kds-header">PREPARANDO (<span id="count-preparo">0</span>)</div>
-                    <div class="kds-body" id="list-preparo"></div>
-                </div>
-
-                <div class="kds-column col-pronto">
-                    <div class="kds-header">PRONTOS / ENTREGUES</div>
-                    <div class="kds-body" id="list-pronto"></div>
                 </div>
             </div>
         </div>
@@ -3148,21 +3017,8 @@
         // 5. EVENTOS
         // ============================================================
 
-        // Variável global para sabermos qual evento está na tela dos bartenders
-            let eventoAtivoNoApp = null; 
-
-            // O "Ouvido" colado no Firebase
-            onSnapshot(doc(db, "config", "geral"), (s) => { 
-                if(s.exists()) { 
-                    eventoAtivoNoApp = s.data().eventoAtivoID; 
-                    
-                    // Sempre que o Firebase gritar que o evento mudou, mandamos redesenhar a lista 
-                    // para a etiqueta "🔴 NO AR" pular para a festa certa!
-                    if (typeof window.renderizarListaEventos === 'function') {
-                        window.renderizarListaEventos();
-                    }
-                }
-            });
+        // 🗑️ ADEUS FIREBASE: O "Ouvido" antigo e a variável global eventoAtivoNoApp 
+        // foram removidos daqui, pois agora somos 100% PostgreSQL!
 
         // ============================================================
         // BUSCAR E LISTAR EVENTOS (POSTGRESQL)
@@ -3189,37 +3045,38 @@
                 }
 
                 eventos.forEach(ev => {
-                let dataFormatada = 'Sem data';
-                if (ev.event_date) {
-                    const partes = ev.event_date.split('-');
-                    dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-                }
+                    let dataFormatada = 'Sem data';
+                    if (ev.event_date) {
+                        const partes = ev.event_date.split('-');
+                        dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                    }
 
-                let corStatus = ev.status === 'aberto' ? '#27ae60' : '#7f8c8d';
-                
-                // 🛠️ A MÁGICA DA FLAG: Se o ID deste evento for o mesmo que está no Firebase, cria a etiqueta!
-                let flagNoAr = (ev.id === eventoAtivoNoApp) 
-                    ? `<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; box-shadow: 0 0 5px #e74c3c; animation: pulse 2s infinite;">🔴 NO AR</span>` 
-                    : '';
+                    let corStatus = ev.status === 'aberto' ? '#27ae60' : '#7f8c8d';
+                    
+                    // 🚀 A MÁGICA DA FLAG MULTI-TENANT
+                    // Lemos direto a verdade do banco: Tá ativo pro gerente E aberto pro bar? Põe o Radar!
+                    let flagNoAr = (ev.is_active === true && ev.status === 'aberto') 
+                        ? `<span style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; box-shadow: 0 0 5px #e74c3c; animation: pulse 2s infinite;">🔴 NO AR</span>` 
+                        : '';
 
-                if (listaDiv) {
-                    listaDiv.innerHTML += `
-                        <div class="event-card-item" style="border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 6px; cursor: pointer; border-left: 5px solid ${corStatus}; background: #fff;" onclick="window.carregarEvento('${ev.id}')">
-                            <div style="font-weight: bold; font-size: 15px; color: #2c3e50;">
-                                ${ev.name} ${flagNoAr}
+                    if (listaDiv) {
+                        listaDiv.innerHTML += `
+                            <div class="event-card-item" style="border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 6px; cursor: pointer; border-left: 5px solid ${corStatus}; background: #fff;" onclick="window.carregarEvento('${ev.id}')">
+                                <div style="font-weight: bold; font-size: 15px; color: #2c3e50;">
+                                    ${ev.name} ${flagNoAr}
+                                </div>
+                                <div style="font-size: 13px; color: #7f8c8d; margin-top: 4px;">📅 ${dataFormatada} | 📍 ${ev.location || 'Sem local'}</div>
+                                <div style="margin-top: 8px;">
+                                    <span style="background: ${corStatus}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase;">${ev.status}</span>
+                                </div>
                             </div>
-                            <div style="font-size: 13px; color: #7f8c8d; margin-top: 4px;">📅 ${dataFormatada} | 📍 ${ev.location || 'Sem local'}</div>
-                            <div style="margin-top: 8px;">
-                                <span style="background: ${corStatus}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase;">${ev.status}</span>
-                            </div>
-                        </div>
-                    `;
-                }
+                        `;
+                    }
 
-                if (sA) {
-                    sA.appendChild(new Option(ev.name, ev.id));
-                }
-            });
+                    if (sA) {
+                        sA.appendChild(new Option(ev.name, ev.id));
+                    }
+                });
 
             } catch (e) {
                 console.error(e);
@@ -3718,17 +3575,32 @@
     // ==========================================
     // 1. ATIVAR NO APP (Mantém a ponte com o Firebase para o KDS não quebrar)
     // ==========================================
+    // ==========================================
+    // 1. ABRIR EVENTO (Multi-Tenant via PostgreSQL)
+    // ==========================================
     window.ativarEvento = async () => {
         if (!eventoID) return alert("Selecione um evento primeiro!");
-        if (confirm("Quer ativar este evento no App (KDS) agora?")) {
+        if (confirm("Quer ABRIR este evento para a equipe agora? (Você pode ter vários abertos!)")) {
             try {
-                // AQUI USAMOS O FIREBASE ANTIGO propositalmente, 
-                // pois a tela dos bartenders (KDS) ainda "escuta" o Firebase!
-                await updateDoc(doc(db, "config", "geral"), { eventoAtivoID: eventoID });
-                alert("🚀 Evento Ativado no App com sucesso!");
+                // ADEUS FIREBASE! Agora disparamos direto para a API Python
+                const resposta = await fetch(`https://aurora-api-zj8e.onrender.com/events/${eventoID}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'aberto' })
+                });
+
+                if (!resposta.ok) throw new Error("Erro ao abrir evento no banco de dados.");
+                
+                alert("🚀 Evento Aberto! Já está aparecendo na tela dos bartenders.");
+                
+                // Atualiza o painel visualmente
+                window.carregarEvento(eventoID); 
+                if (typeof window.renderizarListaEventos === 'function') {
+                    window.renderizarListaEventos();
+                }
             } catch(e) {
                 console.error(e);
-                alert("Erro ao ativar no App.");
+                alert("Erro ao abrir evento: " + e.message);
             }
         }
     };
@@ -4401,192 +4273,6 @@
             }
         };
 
-        // ============================================================
-        // 8. MÓDULO KDS (KITCHEN DISPLAY SYSTEM) - O MOTOR
-        // ============================================================
-
-        let kdsUnsubscribe = null; // Para parar de ouvir quando sair da tela
-
-        // 7.1. INICIALIZAR KDS (Chamado ao abrir a aba)
-        window.iniciarKDS = () => {
-            if (!eventoAtivoID) return alert("Nenhum evento ativo para monitorar.");
-
-            // Carrega lista de bartenders para o select
-            const sel = document.getElementById('kdsOperador');
-            sel.innerHTML = '<option value="">Quem é você?</option>';
-            // Pega do cache da equipe ou busca rapidinho
-            getDocs(collection(db, "equipe")).then(snap => {
-                snap.forEach(d => {
-                    sel.innerHTML += `<option value="${d.data().nome}">${d.data().nome}</option>`;
-                });
-            });
-
-            // Limpa colunas visualmente
-            ['list-pendente', 'list-preparo', 'list-pronto'].forEach(id => document.getElementById(id).innerHTML = '');
-
-            // CANCELA LISTENER ANTERIOR SE HOUVER
-            if (kdsUnsubscribe) kdsUnsubscribe();
-
-            // INICIA NOVO LISTENER (SÓ PEDIDOS NÃO ENTREGUES)
-            const q = query(
-                collection(db, "eventos", eventoAtivoID, "pedidos"),
-                where("status", "in", ["Pendente", "Preparando", "Pronto"]),
-                orderBy("data", "asc")
-            );
-
-            kdsUnsubscribe = onSnapshot(q, (snap) => {
-                // Limpa containers para redesenhar (poderia ser otimizado, mas assim é mais seguro contra bugs visuais)
-                const cols = {
-                    'Pendente': document.getElementById('list-pendente'),
-                    'Preparando': document.getElementById('list-preparo'),
-                    'Pronto': document.getElementById('list-pronto')
-                };
-
-                // Contadores
-                let counts = { 'Pendente': 0, 'Preparando': 0, 'Pronto': 0 };
-
-                cols['Pendente'].innerHTML = '';
-                cols['Preparando'].innerHTML = '';
-                cols['Pronto'].innerHTML = '';
-
-                snap.forEach(doc => {
-                    const p = doc.data();
-                    p.id = doc.id;
-                    counts[p.status]++;
-
-                    // Renderiza Card
-                    const card = criarCardKDS(p);
-                    if (cols[p.status]) cols[p.status].appendChild(card);
-                });
-
-                // Atualiza números no header
-                document.getElementById('count-pendente').innerText = counts['Pendente'];
-                document.getElementById('count-preparo').innerText = counts['Preparando'];
-            });
-        };
-
-        // 8.2. DESENHAR O CARD DO PEDIDO
-        function criarCardKDS(p) {
-            const div = document.createElement('div');
-            // Define classe pela fase
-            let classeStatus = '';
-            if (p.status === 'Pendente') classeStatus = 'new';
-            if (p.status === 'Preparando') classeStatus = 'doing';
-            if (p.status === 'Pronto') classeStatus = 'done';
-
-            div.className = `order-card ${classeStatus}`;
-
-            // Calcula tempo de espera (opcional, mas legal)
-            const hora = p.data ? p.data.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-
-            // Lista de Itens
-            let itensHtml = p.itens.map(i => `
-            <div class="order-item">
-                <span><b>${i.qtd}x</b> ${i.nome}</span>
-            </div>
-        `).join('');
-
-            // Botões de Ação dependendo do Status
-            let botoes = '';
-            if (p.status === 'Pendente') {
-                botoes = `<button onclick="moverPedido('${p.id}', 'Preparando')" class="btn-kds" style="background:#3498db; color:white;">🔥 BORA (Preparar)</button>`;
-            } else if (p.status === 'Preparando') {
-                botoes = `
-                <div style="font-size:0.8em; color:#666; margin-bottom:5px;">Bartender: <b>${p.bartender || '?'}</b></div>
-                <button onclick="moverPedido('${p.id}', 'Pronto')" class="btn-kds" style="background:#27ae60; color:white;">✅ PRONTO</button>
-            `;
-            } else if (p.status === 'Pronto') {
-                botoes = `<button onclick="finalizarPedido('${p.id}')" class="btn-kds" style="background:#7f8c8d; color:white;">🚀 ENTREGUE (Baixar)</button>`;
-            }
-
-            div.innerHTML = `
-            <div class="order-meta">
-                <span>🕒 ${hora}</span>
-                <span>#${p.id.substr(-4).toUpperCase()}</span>
-            </div>
-            <div class="order-client">${p.cliente} <small>(${p.origem || 'App'})</small></div>
-            <div class="order-items">${itensHtml}</div>
-            <div class="order-actions">${botoes}</div>
-        `;
-
-            return div;
-        }
-
-        // 8.3. AÇÕES DE MUDANÇA DE STATUS
-        window.moverPedido = async (id, novoStatus) => {
-            const dados = { status: novoStatus };
-
-            // Se for começar a preparar, grava QUEM está fazendo (Produtividade)
-            if (novoStatus === 'Preparando') {
-                const operador = document.getElementById('kdsOperador').value;
-                if (!operador) return alert("Selecione seu nome no topo da tela antes de pegar o pedido!");
-                dados.bartender = operador;
-            }
-
-            await updateDoc(doc(db, "eventos", eventoAtivoID, "pedidos", id), dados);
-        };
-
-        // 8.4. FINALIZAR (CORRIGIDO COM BAIXA DE ESTOQUE ATIVADA)
-        window.finalizarPedido = async (id) => {
-            const docRef = doc(db, "eventos", eventoAtivoID, "pedidos", id);
-            const snap = await getDoc(docRef);
-            if (!snap.exists()) return;
-            const pedido = snap.data();
-
-            if (!confirm('Confirmar entrega para ' + pedido.cliente + '?')) return;
-
-            const batch = writeBatch(db);
-
-            // Loop item a item do pedido
-            for (const item of pedido.itens) {
-
-                // --- 1. REGISTRO FINANCEIRO (VENDAS) ---
-                const qCardapio = query(collection(db, "eventos", eventoAtivoID, "cardapio"), where("nome", "==", item.nome));
-                const snapCardapio = await getDocs(qCardapio);
-
-                let preco = 0, custo = 0;
-
-                if (!snapCardapio.empty) {
-                    const dData = snapCardapio.docs[0].data();
-                    preco = dData.precoVenda || 0;
-                    custo = dData.precoCusto || 0;
-                }
-
-                const qtdInt = parseInt(item.qtd) || 1;
-
-                // Cria registro de venda para cada unidade
-                for (let i = 0; i < qtdInt; i++) {
-                    const vendaRef = doc(collection(db, "eventos", eventoAtivoID, "vendas"));
-                    batch.set(vendaRef, {
-                        drink: item.nome,
-                        preco: preco,
-                        custo: custo,
-                        usuario: pedido.bartender || 'KDS',
-                        cliente: pedido.cliente || 'Balcão',
-                        hora: new Date(),
-                        origem: 'KDS'
-                    });
-                }
-
-                // --- 2. GATILHO DA BAIXA DE ESTOQUE (AQUI ESTÁ A CORREÇÃO!) ---
-                // Chamamos o Módulo 9 que configuramos antes
-                if (window.processarBaixaEstoque) {
-                    // await garante que o sistema espere a baixa acontecer antes de continuar
-                    await window.processarBaixaEstoque(item.nome, qtdInt);
-                } else {
-                    console.error("ERRO: Módulo processarBaixaEstoque não encontrado!");
-                }
-            }
-
-            // --- 3. ATUALIZA STATUS DO PEDIDO ---
-            batch.update(docRef, { status: 'Entregue', entregueEm: new Date() });
-
-            await batch.commit();
-        };
-
-        // GANCHO PARA INICIAR KDS QUANDO CLICAR NO MENU
-        // Adicione isso dentro da sua função window.showView existente ou altere o onclick no HTML:
-        // <a onclick="showView('view-kds', this); iniciarKDS();" ...>	
 
         // 8.5. CORREÇÃO V70: Exportar CSV com Coluna HORA
         window.exportarRelatorioCSV = () => {
