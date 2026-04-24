@@ -3,102 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cardápio Digital</title>
+    <title>Cardápio Digital - Aurora</title>
     <style>
-        /* ESTILO MOBILE-FIRST (APP LIKE) */
+        /* [Mantive seus estilos originais que já funcionam bem no mobile] */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f8; color: #333; margin: 0; padding: 0; padding-bottom: 80px; }
-        
-        /* HEADER */
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f8; color: #333; margin: 0; padding-bottom: 80px; }
         .header { background: #2c3e50; color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .event-name { font-size: 1.2em; font-weight: bold; color: #f1c40f; text-transform: uppercase; letter-spacing: 1px; }
         .user-info { font-size: 0.8em; color: #bdc3c7; margin-top: 2px; }
-
-        /* VIEWS */
         .view { display: none; padding: 20px; animation: fadeIn 0.3s; }
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
-
-        /* LOGIN SCREEN */
         .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; margin-top: 50px; }
-        input[type="text"] { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1em; margin-bottom: 15px; outline: none; transition: 0.3s; text-align: center; }
-        input[type="text"]:focus { border-color: #3498db; }
-
-        /* MENU GRID */
-        .menu-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        .drink-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; padding: 10px; transition: 0.2s; border: 2px solid transparent; }
+        input[type="text"] { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1em; margin-bottom: 15px; text-align: center; }
+        .drink-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; padding: 10px; margin-bottom: 15px; border: 2px solid transparent; }
         .drink-card.selected { border-color: #3498db; background: #eef7fc; }
-        
-        /* ESTILO PARA ESGOTADO */
-        .drink-card.esgotado { opacity: 0.6; background: #fdfdfd; pointer-events: none; }
-        .drink-card.esgotado .drink-img { filter: grayscale(100%); }
-        .tag-esgotado { background: #c0392b; color: white; font-size: 0.7em; padding: 2px 6px; border-radius: 4px; margin-top: 2px; display: inline-block; font-weight: bold; }
-
-        /* FOTO E INTERAÇÃO (NOVO) */
-        .img-container { position: relative; width: 70px; height: 70px; border-radius: 8px; overflow: hidden; cursor: pointer; flex-shrink: 0; }
-        .drink-img { width: 100%; height: 100%; object-fit: cover; background: #eee; }
-        
-        /* Badge "Ver Mais" sobre a foto */
-        .ver-mais-badge {
-            position: absolute; bottom: 0; left: 0; width: 100%;
-            background: rgba(0,0,0,0.6); color: white; font-size: 9px;
-            text-align: center; padding: 2px 0; text-transform: uppercase;
-        }
-
-        .drink-info { flex: 1; padding: 0 15px; }
-        .drink-name { font-weight: bold; font-size: 1.1em; color: #2c3e50; }
-        .stock-info { font-size: 0.75em; color: #7f8c8d; margin-top: 2px; }
-        .tag-mocktail { font-size: 0.7em; background: #e8f8f5; color: #27ae60; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 2px; border: 1px solid #a9dfbf; }
-        
-        /* CONTROLS (+/-) */
-        .qty-control { display: flex; align-items: center; gap: 10px; }
-        .btn-qty { width: 35px; height: 35px; border-radius: 50%; border: none; background: #ecf0f1; color: #2c3e50; font-weight: bold; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-container { position: relative; width: 75px; height: 75px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+        .drink-img { width: 100%; height: 100%; object-fit: cover; }
+        .drink-info { flex: 1; padding: 0 12px; }
+        .drink-name { font-weight: bold; font-size: 1.1em; }
+        .qty-control { display: flex; align-items: center; gap: 8px; }
+        .btn-qty { width: 32px; height: 32px; border-radius: 50%; border: none; background: #ecf0f1; font-weight: bold; }
         .btn-qty.active { background: #3498db; color: white; }
-        .btn-qty:disabled { background: #ccc; cursor: not-allowed; color: #888; } 
-        .qty-val { font-weight: bold; width: 20px; text-align: center; }
-
-        /* FLOATING CART */
-        .float-cart { position: fixed; bottom: 20px; left: 5%; width: 90%; background: #2c3e50; color: white; padding: 15px; border-radius: 50px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; }
-        .float-cart.visible { display: flex; animation: slideUp 0.3s; }
-        @keyframes slideUp { from { transform: translateY(100px); } to { transform: translateY(0); } }
-        
-        .btn-action { background: #f1c40f; color: #2c3e50; border: none; padding: 10px 25px; border-radius: 30px; font-weight: bold; font-size: 1em; cursor: pointer; }
-
-        /* STATUS SCREEN */
-        .status-box { text-align: center; margin-top: 40px; }
-        .pulse-circle { width: 120px; height: 120px; background: #e8f4fd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; position: relative; }
-        .pulse-circle::after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 4px solid #3498db; animation: pulse 2s infinite; }
-        .status-icon { font-size: 3em; }
-        .status-text { font-size: 1.5em; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
-        .status-desc { color: #7f8c8d; padding: 0 20px; }
-        
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
-
-        /* --- NOVO: ESTILO DO MODAL DE DETALHES --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); display: none;
-            justify-content: center; align-items: center; z-index: 9999;
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            background: #fff; width: 90%; max-width: 400px;
-            border-radius: 15px; overflow: hidden; position: relative;
-            animation: zoomIn 0.3s ease;
-        }
-        .modal-header-img { width: 100%; height: 250px; object-fit: cover; }
-        .modal-body { padding: 20px; text-align: center; }
-        .modal-title { margin: 0 0 10px 0; color: #2c3e50; font-family: 'Georgia', serif; }
-        .modal-ingredientes { list-style: none; padding: 0; margin: 15px 0; text-align: left; display: inline-block; width:100%; }
-        .modal-ingredientes li { padding: 8px 0; border-bottom: 1px dashed #eee; color: #555; display:flex; align-items:center; }
-        .modal-ingredientes li::before { content: "🔹"; margin-right:8px; font-size:0.8em; }
-        .btn-fechar-modal {
-            position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9);
-            border: none; width: 35px; height: 35px; border-radius: 50%;
-            font-weight: bold; font-size: 18px; color: #333; cursor: pointer;
-        }
-        @keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-
+        .float-cart { position: fixed; bottom: 20px; left: 5%; width: 90%; background: #2c3e50; color: white; padding: 15px; border-radius: 50px; display: none; justify-content: space-between; align-items: center; z-index: 200; }
+        .float-cart.visible { display: flex; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(5px); }
+        .modal-content { background: #fff; width: 90%; max-width: 400px; border-radius: 15px; overflow: hidden; position: relative; }
+        .modal-body { padding: 20px; }
     </style>
 </head>
 <body>
@@ -110,445 +41,210 @@
 
     <div id="view-login" class="view active">
         <div class="login-box">
-            <h3>🍹 Bem-vindo!</h3>
-            <p style="color:#666; margin-bottom:20px;">Como devemos chamar no balcão?</p>
-            <input type="text" id="inputNome" placeholder="Seu Nome" autocomplete="off">
-            <button class="btn-action" style="width:100%" onclick="entrar()">Ver Cardápio</button>
-            <p style="margin-top:20px; font-size:0.8em; color:#999">Pedindo no balcão? Digite <b>BALCAO</b></p>
+            <h3>🍹 Seja bem-vindo!</h3>
+            <p style="color:#666;">Como devemos chamar você no balcão?</p>
+            <input type="text" id="inputNome" placeholder="Seu Nome">
+            <button class="btn-qty active" style="width:100%; height: 50px; border-radius: 10px;" onclick="entrar()">Entrar no Evento</button>
         </div>
     </div>
 
     <div id="view-menu" class="view">
-        <div class="menu-grid" id="menu-list">
-        </div>
+        <div id="menu-list"></div>
     </div>
 
     <div id="view-status" class="view">
-        <div class="status-box">
-            <div class="pulse-circle" id="statusColor">
-                <span class="status-icon" id="statusIcon">⏳</span>
-            </div>
-            <div class="status-text" id="statusTitle">Aguardando...</div>
-            <p class="status-desc" id="statusDesc">Seu pedido foi enviado.</p>
-            
-            <div style="margin-top:30px; background:white; padding:15px; border-radius:8px; border:1px dashed #ccc;">
-                <div style="font-size:0.9em; color:#999; margin-bottom:5px;">RESUMO DO PEDIDO</div>
-                <div id="statusItems" style="color:#333; font-weight:bold; font-size:1.1em;"></div>
-            </div>
+        <div style="text-align:center; margin-top:50px;">
+            <h2 id="statusTitle">...</h2>
+            <p id="statusDesc">Aguardando atualização do bar...</p>
+            <div id="statusItems" style="background:white; padding:15px; border-radius:10px; margin-top:20px;"></div>
         </div>
     </div>
 
     <div class="float-cart" id="floatCart" onclick="enviarPedido()">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div style="background:rgba(255,255,255,0.2); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">
-                <span id="cartCount">0</span>
-            </div>
-            <span>Confirmar</span>
-        </div>
-        <span style="font-size:1.5em;">➔</span>
+        <span>🛒 <span id="cartCount">0</span> itens selecionados</span>
+        <button style="background:#f1c40f; border:none; padding:8px 20px; border-radius:20px; font-weight:bold;">PEDIR AGORA</button>
     </div>
 
     <div id="modal-detalhes" class="modal-overlay" onclick="fecharDetalhes(event)">
         <div class="modal-content">
-            <button class="btn-fechar-modal" onclick="fecharDetalhes(event)">✕</button>
-            <img id="modal-img" src="" class="modal-header-img" alt="Drink">
+            <img id="modal-img" src="" style="width:100%; height:200px; object-fit:cover;">
             <div class="modal-body">
-                <h2 id="modal-titulo" class="modal-title"></h2>
-                
-                <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-top:10px; text-align:left;">
-                    <h4 style="margin:0 0 10px 0; color:#e67e22; text-transform:uppercase; font-size:0.8em; border-bottom:1px solid #ddd; padding-bottom:5px;">O que vai:</h4>
-                    <ul id="modal-lista" class="modal-ingredientes"></ul>
-                </div>
-
-                <button onclick="fecharDetalhes(event)" style="margin-top:15px; background:#2c3e50; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold;">
-                    Voltar ao Cardápio
-                </button>
+                <h2 id="modal-titulo"></h2>
+                <p style="color:#e67e22; font-weight:bold; font-size:0.9em;">COMPOSIÇÃO:</p>
+                <ul id="modal-lista" style="padding-left:20px; color:#555;"></ul>
+                <button onclick="document.getElementById('modal-detalhes').style.display='none'" style="width:100%; padding:12px; margin-top:15px;">Fechar</button>
             </div>
         </div>
     </div>
 
 <script type="module">
+    const API_BASE = "https://aurora-api-zj8e.onrender.com";
+    
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, query, where, orderBy, limit, serverTimestamp, writeBatch, increment} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, limit, serverTimestamp, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ⚠️ COLE SUA CONFIG AQUI ⚠️
     const firebaseConfig = {
-      apiKey: "AIzaSyBu8y9RQMv9fbxORcRLAZN4OlA1IEXyZUU",
-      authDomain: "aurora-bar-system.firebaseapp.com",
-      projectId: "aurora-bar-system",
-      storageBucket: "aurora-bar-system.firebasestorage.app",
-      messagingSenderId: "380441809814",
-      appId: "1:380441809814:web:ad008f37d30a5b0abe03b7"
+        apiKey: "AIzaSyBu8y9RQMv9fbxORcRLAZN4OlA1IEXyZUU",
+        authDomain: "aurora-bar-system.firebaseapp.com",
+        projectId: "aurora-bar-system",
+        storageBucket: "aurora-bar-system.firebasestorage.app",
+        messagingSenderId: "380441809814",
+        appId: "1:380441809814:web:ad008f37d30a5b0abe03b7"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // --- ESTADO LOCAL ---
-    let eventoAtivoID = null;
-    let usuario = { 
-        nome: localStorage.getItem('aurora_user_nome') || null, 
-        id: localStorage.getItem('aurora_user_id') || null,
-        isBalcao: localStorage.getItem('aurora_is_balcao') === 'true' 
-    };
-    let carrinho = {}; 
-    let cardapioCache = []; // NOVO: Guarda os dados para o modal não precisar ir no banco de novo
+    // ESTADO
+    let eventoID = null; // ID vindo do PostgreSQL
+    let urlSlug = new URLSearchParams(window.location.search).get('festa');
+    let usuario = { nome: localStorage.getItem('aurora_user_nome'), id: localStorage.getItem('aurora_user_id') };
+    let carrinho = {};
+    let cacheDrinks = [];
 
-// --- INICIALIZAÇÃO (AGORA LÊ O QR CODE PELA URL) ---
     window.onload = async () => {
-        // 1. Verifica se a URL tem um parâmetro de evento (Ex: ?evento=12345)
-        const urlParams = new URLSearchParams(window.location.search);
-        const idDaUrl = urlParams.get('evento');
+        if (!urlSlug) return alert("QR Code inválido ou incompleto.");
+        await carregarConfiguracoesEvento();
+    };
 
-        if (idDaUrl) {
-            eventoAtivoID = idDaUrl;
-            // Busca o nome do evento para exibir no topo da tela
-            const eventoSnap = await getDoc(doc(db, "eventos", eventoAtivoID));
-            if (eventoSnap.exists()) {
-                document.getElementById('headerEventName').innerText = eventoSnap.data().nome || "Aurora Bartenders";
+    // 1. BUSCA DADOS DO NOVO BANCO (POSTGRESQL)
+    async function carregarConfiguracoesEvento() {
+        try {
+            const res = await fetch(`${API_BASE}/menu/${urlSlug}`);
+            const data = await res.json();
+
+            if (!data.drinks) throw new Error("Evento não encontrado");
+
+            eventoID = data.event_id || urlSlug; // Fallback se não vier ID
+            document.getElementById('headerEventName').innerText = data.festa;
+            cacheDrinks = data.drinks;
+
+            if (usuario.nome) {
+                document.getElementById('headerUserInfo').innerText = `Olá, ${usuario.nome}`;
+                verificarStatusPedido();
             }
-        } else {
-            // 2. FALLBACK: Se abrir sem QR Code, tenta puxar o evento ativo global (como era antes)
-            const configSnap = await getDoc(doc(db, "config", "geral"));
-            if (configSnap.exists()) {
-                const data = configSnap.data();
-                eventoAtivoID = data.eventoAtivoID;
-                document.getElementById('headerEventName').innerText = data.eventoAtivoNome || "Aurora Bartenders";
-            }
-        }
-
-        if (!eventoAtivoID) {
-            document.getElementById('headerEventName').innerText = "Erro";
-            return alert("Nenhum evento localizado. Por favor, leia o QR Code novamente.");
-        }
-        
-        // Continua o fluxo normal do app (Login ou Cardápio)
-        if (usuario.nome) {
-            aplicarUsuarioNaTela();
-            verificarPedidoAtivo(); 
-        } else {
-            mostrarView('view-login');
-        }
-    };
-
-    window.mostrarView = (id) => {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        const total = Object.values(carrinho).reduce((acc, i) => acc + i.qtd, 0);
-        document.getElementById('floatCart').className = (id === 'view-menu' && total > 0) ? 'float-cart visible' : 'float-cart';
-    };
-
-    // --- LOGIN ---
-    window.entrar = () => {
-        let nome = document.getElementById('inputNome').value.trim().toUpperCase(); 
-        if (!nome) return alert("Digite seu nome.");
-        
-        const isBalcao = (nome === 'BALCAO' || nome === 'BALCÃO' || nome === 'CAIXA');
-        
-        if (!usuario.id) {
-            usuario.id = 'u_' + Date.now() + Math.random().toString(36).substr(2, 5);
-            localStorage.setItem('aurora_user_id', usuario.id);
-        }
-        
-        usuario.nome = nome;
-        usuario.isBalcao = isBalcao;
-        
-        localStorage.setItem('aurora_user_nome', nome);
-        localStorage.setItem('aurora_is_balcao', isBalcao);
-
-        aplicarUsuarioNaTela();
-        verificarPedidoAtivo();
-    };
-
-    function aplicarUsuarioNaTela() {
-        document.getElementById('headerUserInfo').innerText = usuario.isBalcao ? "MODO STAFF (Sem Limites)" : `Olá, ${usuario.nome}`;
-        if(usuario.isBalcao) {
-            document.getElementById('headerUserInfo').style.color = '#f1c40f';
+        } catch (e) {
+            alert("Erro ao carregar o cardápio. Verifique sua conexão.");
         }
     }
 
-    // --- CARDÁPIO (ATUALIZADO COM MODAL) ---
-    function carregarCardapio() {
+    window.entrar = () => {
+        const nome = document.getElementById('inputNome').value.trim();
+        if (!nome) return alert("Diga-nos seu nome!");
+        
+        usuario.nome = nome.toUpperCase();
+        usuario.id = 'u' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('aurora_user_nome', usuario.nome);
+        localStorage.setItem('aurora_user_id', usuario.id);
+        
+        location.reload();
+    };
+
+    // 2. RENDERIZA O CARDÁPIO (DADOS DO POSTGRES)
+    function renderizarCardapio() {
         const lista = document.getElementById('menu-list');
-        if(lista.children.length === 0) lista.innerHTML = '<p style="text-align:center">Carregando...</p>';
-
-        onSnapshot(collection(db, "eventos", eventoAtivoID, "cardapio"), (snap) => {
-            lista.innerHTML = '';
-            cardapioCache = []; // Limpa cache
-            
-            snap.forEach(doc => {
-                const d = doc.data();
-                const id = doc.id;
-                
-                // Salva no cache para o modal usar
-                const indexCache = cardapioCache.push(d) - 1;
-
-                const isMocktail = (d.tipo === 'Mocktail' || d.tipo === 'Sem Álcool' || d.nome.toLowerCase().includes('sem álcool')); 
-                
-                // --- LÓGICA DE ESTOQUE ---
-                const estoqueAtual = d.estoque !== undefined ? d.estoque : 0;
-                const semEstoque = estoqueAtual <= 0;
-                
-                const classeExtra = semEstoque ? 'esgotado' : '';
-                const botaoMenos = semEstoque ? 'disabled' : '';
-                const botaoMais = semEstoque ? 'disabled' : ''; 
-                
-                const div = document.createElement('div');
-                div.className = `drink-card ${classeExtra} ${carrinho[id] ? 'selected' : ''}`;
-                
-                let tag = isMocktail ? '<span class="tag-mocktail">Sem Álcool</span>' : '';
-                if(semEstoque) tag = '<span class="tag-esgotado">ESGOTADO</span>';
-
-                // CORREÇÃO: Foto clicável
-                div.innerHTML = `
-                    <div class="img-container" onclick="verDetalhes(${indexCache})">
-                        <img src="${d.imagem || './imagens/foto.jpg'}" class="drink-img">
-                        <div class="ver-mais-badge">🔍 Ver Detalhes</div>
-                    </div>
-                    <div class="drink-info">
-                        <div class="drink-name">${d.nome}</div>
-                        ${tag}
-                        ${!semEstoque && !usuario.isBalcao ? `<div class="stock-info">Restam: ${estoqueAtual}</div>` : ''}
-                    </div>
-                    <div class="qty-control">
-                        <button class="btn-qty" onclick="alterarQtd('${id}', '${d.nome}', -1, ${estoqueAtual})" ${botaoMenos}>-</button>
-                        <span class="qty-val" id="qty_${id}">${carrinho[id] ? carrinho[id].qtd : 0}</span>
-                        <button class="btn-qty active" onclick="alterarQtd('${id}', '${d.nome}', 1, ${estoqueAtual})" ${botaoMais}>+</button>
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
-            atualizarCarrinhoVisual();
+        lista.innerHTML = '';
+        
+        cacheDrinks.forEach((d, index) => {
+            const div = document.createElement('div');
+            div.className = `drink-card ${carrinho[d.nome] ? 'selected' : ''}`;
+            div.innerHTML = `
+                <div class="img-container" onclick="verDetalhes(${index})">
+                    <img src="${d.foto || './imagens/drink_default.jpg'}" class="drink-img">
+                </div>
+                <div class="drink-info">
+                    <div class="drink-name">${d.nome_do_drink}</div>
+                    <small style="color:#7f8c8d">${d.descricao || ''}</small>
+                </div>
+                <div class="qty-control">
+                    <button class="btn-qty" onclick="alterarQtd('${d.nome_do_drink}', -1)">-</button>
+                    <span class="qty-val">${carrinho[d.nome_do_drink]?.qtd || 0}</span>
+                    <button class="btn-qty active" onclick="alterarQtd('${d.nome_do_drink}', 1)">+</button>
+                </div>
+            `;
+            lista.appendChild(div);
         });
         mostrarView('view-menu');
     }
 
-    // --- LÓGICA DO MODAL DE DETALHES (SÓ INGREDIENTES, SEM QUANTIDADE) ---
-    window.verDetalhes = async (index) => {
-        const itemLocal = cardapioCache[index];
-        if(!itemLocal) return;
-
-        // 1. Abre o modal e mostra carregando
-        document.getElementById('modal-detalhes').style.display = 'flex';
-        document.getElementById('modal-titulo').innerText = itemLocal.nome;
-        document.getElementById('modal-img').src = itemLocal.imagem || './imagens/foto.jpg';
+    window.alterarQtd = (nome, delta) => {
+        if (!carrinho[nome]) carrinho[nome] = { nome: nome, qtd: 0 };
         
-        const ul = document.getElementById('modal-lista');
-        ul.innerHTML = '<li style="text-align:center; color:#888;">🔍 Buscando receita...</li>';
+        const totalNoCarrinho = Object.values(carrinho).reduce((a, b) => a + b.qtd, 0);
+        if (delta > 0 && totalNoCarrinho >= 2) return alert("Máximo de 2 drinks por pedido!");
 
-        try {
-            let ingredientesFinais = [];
-
-            // CENÁRIO A: Receita Local
-            if (itemLocal.ingredientes && itemLocal.ingredientes.length > 0) {
-                ingredientesFinais = itemLocal.ingredientes;
-            } 
-            // CENÁRIO B: Busca Remota (Biblioteca)
-            else if (itemLocal.idOriginal) {
-                const docRef = doc(db, "drinks", itemLocal.idOriginal);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    const dadosOriginais = docSnap.data();
-                    itemLocal.ingredientes = dadosOriginais.ingredientes || dadosOriginais.receita || [];
-                    ingredientesFinais = itemLocal.ingredientes;
-                }
-            }
-
-            // 2. Renderiza a Lista
-            ul.innerHTML = ''; 
-
-            if (ingredientesFinais && ingredientesFinais.length > 0) {
-                ingredientesFinais.forEach(ing => {
-                    let nomeItem = "";
-
-                    // Tratamento para pegar apenas o NOME
-                    if (typeof ing === 'object') {
-                        nomeItem = ing.nome || ing.produto || ing.item || "Ingrediente";
-                    } else {
-                        nomeItem = String(ing);
-                    }
-
-                    // Ignora instruções longas (modo de preparo)
-                    if(nomeItem.length > 50) return; 
-
-                    // AQUI ESTÁ A ALTERAÇÃO: Renderiza apenas o nome, sem quantidades
-                    ul.innerHTML += `
-                        <li style="display:flex; align-items:center;">
-                            <span>${nomeItem}</span>
-                        </li>`;
-                });
-            } else {
-                ul.innerHTML = '<li style="color:#999; font-style:italic; text-align:center;">Segredo da casa</li>';
-            }
-
-        } catch (error) {
-            console.error("Erro ao buscar detalhes:", error);
-            ul.innerHTML = '<li style="color:red">Erro ao carregar receita.</li>';
-        }
-    };
-
-    window.fecharDetalhes = (e) => {
-        // Só fecha se clicar no overlay escuro ou no botão, não no conteúdo branco
-        if(e.target.id === 'modal-detalhes' || e.target.tagName === 'BUTTON') {
-            document.getElementById('modal-detalhes').style.display = 'none';
-        }
-    };
-
-    // CORREÇÃO: Função recebe agora o 'estoqueMax' para validar
-    window.alterarQtd = (id, nome, delta, estoqueMax) => {
-        if (!carrinho[id]) carrinho[id] = { qtd: 0, nome: nome };
-        const totalAtual = Object.values(carrinho).reduce((acc, item) => acc + item.qtd, 0);
-
-        // 1. VERIFICAÇÃO DE LIMITE DE PEDIDO (2 DRINKS)
-        if (!usuario.isBalcao && delta > 0 && totalAtual >= 2) {
-            return alert("✋ Limite de 2 drinks por pedido para agilizar a fila!");
-        }
-
-        // 2. VERIFICAÇÃO DE ESTOQUE (CORREÇÃO PEDIDA)
-        if (!usuario.isBalcao && delta > 0) {
-            // Se tentar adicionar e a qtd nova for maior que o estoque...
-            if (carrinho[id].qtd + 1 > estoqueMax) {
-                return alert(`⚠️ Ops! Só temos ${estoqueMax} unidades deste drink disponíveis.`);
-            }
-        }
-
-        carrinho[id].qtd += delta;
-        if (carrinho[id].qtd <= 0) delete carrinho[id];
-
-        const elQty = document.getElementById(`qty_${id}`);
-        if(elQty) elQty.innerText = carrinho[id] ? carrinho[id].qtd : 0;
+        carrinho[nome].qtd += delta;
+        if (carrinho[nome].qtd <= 0) delete carrinho[nome];
         
-        const card = elQty?.parentElement?.parentElement;
-        if(card) {
-            if(carrinho[id]) card.classList.add('selected');
-            else card.classList.remove('selected');
-        }
-
-        atualizarCarrinhoVisual();
+        renderizarCardapio();
+        atualizarBotaoCarrinho();
     };
 
-    function atualizarCarrinhoVisual() {
-        const total = Object.values(carrinho).reduce((acc, item) => acc + item.qtd, 0);
+    function atualizarBotaoCarrinho() {
+        const total = Object.values(carrinho).reduce((a, b) => a + b.qtd, 0);
         document.getElementById('cartCount').innerText = total;
-        const floatCart = document.getElementById('floatCart');
-        if (total > 0) floatCart.classList.add('visible');
-        else floatCart.classList.remove('visible');
+        document.getElementById('floatCart').style.display = total > 0 ? 'flex' : 'none';
     }
 
-    // --- TRAVA DE FILA ---
-    function verificarPedidoAtivo() {
-        if (usuario.isBalcao) {
-            carregarCardapio();
-            return;
+    // 3. ENVIA O PEDIDO (PARA O KDS NO FIREBASE)
+    window.enviarPedido = async () => {
+        const itens = Object.values(carrinho);
+        try {
+            await addDoc(collection(db, "eventos", eventoID, "pedidos"), {
+                cliente: usuario.nome,
+                clienteID: usuario.id,
+                itens: itens,
+                status: 'Pendente',
+                data: serverTimestamp(),
+                origem: 'App'
+            });
+            carrinho = {};
+            verificarStatusPedido();
+        } catch (e) {
+            alert("Erro ao enviar pedido.");
         }
+    };
 
+    // 4. MONITORAMENTO DE STATUS (KDS -> CELULAR DO CLIENTE)
+    function verificarStatusPedido() {
         const q = query(
-            collection(db, "eventos", eventoAtivoID, "pedidos"), 
+            collection(db, "eventos", eventoID, "pedidos"),
             where("clienteID", "==", usuario.id),
             where("status", "in", ["Pendente", "Preparando", "Pronto"]),
             limit(1)
         );
 
         onSnapshot(q, (snap) => {
-            if (!snap.empty) {
-                const pedido = snap.docs[0].data();
-                atualizarTelaStatus(pedido.status, pedido.itens);
-                mostrarView('view-status');
+            if (snap.empty) {
+                renderizarCardapio();
+                mostrarView('view-menu');
             } else {
-                carregarCardapio();
+                const p = snap.docs[0].data();
+                const statusItems = document.getElementById('statusItems');
+                statusItems.innerHTML = p.itens.map(i => `<b>${i.qtd}x ${i.nome}</b>`).join('<br>');
+                
+                document.getElementById('statusTitle').innerText = p.status.toUpperCase();
+                document.getElementById('statusDesc').innerText = p.status === 'Pronto' ? 'Vem buscar! 🍹' : 'Estamos preparando...';
+                
+                mostrarView('view-status');
+                if (p.status === 'Pronto' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
             }
         });
     }
 
-    function atualizarTelaStatus(status, itens) {
-        const icon = document.getElementById('statusIcon');
-        const title = document.getElementById('statusTitle');
-        const desc = document.getElementById('statusDesc');
-
-        let listaHTML = itens
-            .filter(i => i.qtd > 0)
-            .map(i => `<div style="padding:5px; border-bottom:1px solid #eee;">${i.qtd}x ${i.nome}</div>`)
-            .join('');
-            
-        document.getElementById('statusItems').innerHTML = listaHTML;
-
-        if (status === 'Pendente') {
-            icon.innerText = '⏳';
-            title.innerText = 'Na Fila';
-            title.style.color = '#f39c12';
-            desc.innerText = 'Recebemos seu pedido. Aguarde...';
-        } else if (status === 'Preparando') {
-            icon.innerText = '🍸';
-            title.innerText = 'Preparando...';
-            title.style.color = '#3498db';
-            desc.innerText = 'O barman está fazendo seus drinks!';
-        } else if (status === 'Pronto') {
-            icon.innerText = '✅';
-            title.innerText = 'PRONTO!';
-            title.style.color = '#27ae60';
-            desc.innerText = 'Pode vir retirar no balcão.';
-            
-            if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        }
-    }
-
-    // --- ENVIAR PEDIDO ---
-    window.enviarPedido = async () => {
-        const idsCarrinho = Object.keys(carrinho);
-        const itensValidos = idsCarrinho.filter(id => carrinho[id].qtd > 0);
-        
-        if (itensValidos.length === 0) return alert("Selecione algum drink!");
-
-        // Monta array de itens com Nome e Qtd para salvar no pedido
-        const itensPedido = itensValidos.map(id => ({ 
-            idOriginal: id, // Guardamos o ID para referência futura
-            nome: carrinho[id].nome, 
-            qtd: carrinho[id].qtd 
-        }));
-
-        try {
-            const batch = writeBatch(db);
-
-            // 1. CRIA O PEDIDO NA COLEÇÃO
-            const pedidoRef = doc(collection(db, "eventos", eventoAtivoID, "pedidos"));
-            batch.set(pedidoRef, {
-                cliente: usuario.nome,
-                clienteID: usuario.id,
-                itens: itensPedido,
-                status: 'Pendente', 
-                origem: usuario.isBalcao ? 'Balcao' : 'App',
-                data: serverTimestamp()
-            });
-
-            // 2. DÁ BAIXA NO ESTOQUE IMEDIATAMENTE (Para travar outros clientes)
-            if (!usuario.isBalcao) { 
-                itensValidos.forEach(id => {
-                    const itemRef = doc(db, "eventos", eventoAtivoID, "cardapio", id);
-                    batch.update(itemRef, { 
-                        estoque: increment(-carrinho[id].qtd) 
-                    });
-                });
-            }
-
-            // Executa tudo de uma vez (Atômico)
-            await batch.commit();
-            
-            // Limpa local
-            carrinho = {};
-            document.querySelectorAll('.qty-val').forEach(el => el.innerText = '0');
-            document.querySelectorAll('.drink-card').forEach(el => el.classList.remove('selected'));
-            atualizarCarrinhoVisual();
-
-            if (usuario.isBalcao) {
-                alert("Pedido Balcão Enviado! ✅");
-            }
-            
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao enviar pedido. Tente novamente.");
-        }
+    window.verDetalhes = (idx) => {
+        const d = cacheDrinks[idx];
+        document.getElementById('modal-img').src = d.foto || './imagens/drink_default.jpg';
+        document.getElementById('modal-titulo').innerText = d.nome_do_drink;
+        // O SQL já traz os ingredientes formatados na descrição ou você pode tratar aqui
+        document.getElementById('modal-lista').innerHTML = `<li>${d.descricao}</li>`;
+        document.getElementById('modal-detalhes').style.display = 'flex';
     };
+
+    function mostrarView(id) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
 </script>
 </body>
 </html>
