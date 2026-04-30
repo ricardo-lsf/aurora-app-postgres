@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cardápio Digital - Aurora</title>
     <style>
-        /* [Mantive seus estilos originais que já funcionam bem no mobile] */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f6f8; color: #333; margin: 0; padding-bottom: 80px; }
         .header { background: #2c3e50; color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -18,14 +17,14 @@
         input[type="text"] { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1em; margin-bottom: 15px; text-align: center; }
         .drink-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; padding: 10px; margin-bottom: 15px; border: 2px solid transparent; }
         .drink-card.selected { border-color: #3498db; background: #eef7fc; }
-        .img-container { position: relative; width: 75px; height: 75px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+        .img-container { position: relative; width: 75px; height: 75px; border-radius: 8px; overflow: hidden; flex-shrink: 0; cursor: pointer; }
         .drink-img { width: 100%; height: 100%; object-fit: cover; }
         .drink-info { flex: 1; padding: 0 12px; }
         .drink-name { font-weight: bold; font-size: 1.1em; }
         .qty-control { display: flex; align-items: center; gap: 8px; }
-        .btn-qty { width: 32px; height: 32px; border-radius: 50%; border: none; background: #ecf0f1; font-weight: bold; }
+        .btn-qty { width: 32px; height: 32px; border-radius: 50%; border: none; background: #ecf0f1; font-weight: bold; cursor: pointer; }
         .btn-qty.active { background: #3498db; color: white; }
-        .float-cart { position: fixed; bottom: 20px; left: 5%; width: 90%; background: #2c3e50; color: white; padding: 15px; border-radius: 50px; display: none; justify-content: space-between; align-items: center; z-index: 200; }
+        .float-cart { position: fixed; bottom: 20px; left: 5%; width: 90%; background: #2c3e50; color: white; padding: 15px; border-radius: 50px; display: none; justify-content: space-between; align-items: center; z-index: 200; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .float-cart.visible { display: flex; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(5px); }
         .modal-content { background: #fff; width: 90%; max-width: 400px; border-radius: 15px; overflow: hidden; position: relative; }
@@ -39,6 +38,7 @@
         <div class="user-info" id="headerUserInfo"></div>
     </div>
 
+    <!-- TELA DE LOGIN (NOME DO CLIENTE) -->
     <div id="view-login" class="view active">
         <div class="login-box">
             <h3>🍹 Seja bem-vindo!</h3>
@@ -48,118 +48,130 @@
         </div>
     </div>
 
+    <!-- TELA DO CARDÁPIO -->
     <div id="view-menu" class="view">
         <div id="menu-list"></div>
     </div>
 
+    <!-- TELA DE STATUS DO PEDIDO -->
     <div id="view-status" class="view">
         <div style="text-align:center; margin-top:50px;">
             <h2 id="statusTitle">...</h2>
             <p id="statusDesc">Aguardando atualização do bar...</p>
-            <div id="statusItems" style="background:white; padding:15px; border-radius:10px; margin-top:20px;"></div>
+            <div id="statusItems" style="background:white; padding:15px; border-radius:10px; margin-top:20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"></div>
         </div>
     </div>
 
+    <!-- BOTÃO FLUTUANTE (CARRINHO) -->
     <div class="float-cart" id="floatCart" onclick="enviarPedido()">
         <span>🛒 <span id="cartCount">0</span> itens selecionados</span>
-        <button style="background:#f1c40f; border:none; padding:8px 20px; border-radius:20px; font-weight:bold;">PEDIR AGORA</button>
+        <button style="background:#f1c40f; color:#2c3e50; border:none; padding:8px 20px; border-radius:20px; font-weight:bold; cursor: pointer;">PEDIR AGORA</button>
     </div>
 
+    <!-- MODAL DE DETALHES DA RECEITA -->
     <div id="modal-detalhes" class="modal-overlay" onclick="fecharDetalhes(event)">
-        <div class="modal-content">
+        <div class="modal-content" onclick="event.stopPropagation()">
             <img id="modal-img" src="" style="width:100%; height:200px; object-fit:cover;">
             <div class="modal-body">
-                <h2 id="modal-titulo"></h2>
-                <p style="color:#e67e22; font-weight:bold; font-size:0.9em;">COMPOSIÇÃO:</p>
+                <h2 id="modal-titulo" style="margin-top: 0;"></h2>
+                <p style="color:#e67e22; font-weight:bold; font-size:0.9em;">DETALHES:</p>
                 <ul id="modal-lista" style="padding-left:20px; color:#555;"></ul>
-                <button onclick="document.getElementById('modal-detalhes').style.display='none'" style="width:100%; padding:12px; margin-top:15px;">Fechar</button>
+                <button onclick="fecharDetalhesManual()" style="width:100%; padding:12px; margin-top:15px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Fechar</button>
             </div>
         </div>
     </div>
 
-<script type="module">
+<script>
+    // ==========================================
+    // CONFIGURAÇÕES GERAIS E ESTADO (API PYTHON)
+    // ==========================================
     const API_BASE = "https://aurora-api-zj8e.onrender.com";
-    
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, where, limit, serverTimestamp, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBu8y9RQMv9fbxORcRLAZN4OlA1IEXyZUU",
-        authDomain: "aurora-bar-system.firebaseapp.com",
-        projectId: "aurora-bar-system",
-        storageBucket: "aurora-bar-system.firebasestorage.app",
-        messagingSenderId: "380441809814",
-        appId: "1:380441809814:web:ad008f37d30a5b0abe03b7"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // ESTADO
-    let eventoID = null; // ID vindo do PostgreSQL
+    let eventoID = null; 
     let urlSlug = new URLSearchParams(window.location.search).get('festa');
     let usuario = { nome: localStorage.getItem('aurora_user_nome'), id: localStorage.getItem('aurora_user_id') };
     let carrinho = {};
     let cacheDrinks = [];
+    let pollInterval = null; 
 
     window.onload = async () => {
-        if (!urlSlug) return alert("QR Code inválido ou incompleto.");
+        if (!urlSlug || urlSlug === 'null') {
+            document.getElementById('headerEventName').innerText = "Erro no QR Code";
+            document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px; color:#c0392b;'>QR Code inválido.<br>Por favor, escaneie novamente.</h2>";
+            return;
+        }
         await carregarConfiguracoesEvento();
     };
 
-    // 1. BUSCA DADOS DO NOVO BANCO (POSTGRESQL)
+    // 1. CARREGA O CARDÁPIO (POSTGRES via FASTAPI)
     async function carregarConfiguracoesEvento() {
         try {
-            const res = await fetch(`${API_BASE}/menu/${urlSlug}`);
+            // Voltamos para a SUA rota original que funciona!
+            const res = await fetch(`${API_BASE}/events/${urlSlug}/menu`);
+            if (!res.ok) throw new Error("Falha ao buscar dados da API");
+            
             const data = await res.json();
 
-            if (!data.drinks) throw new Error("Evento não encontrado");
+            eventoID = urlSlug; 
+            document.getElementById('headerEventName').innerText = data.festa || "Evento Aurora";
+            cacheDrinks = data.drinks || [];
 
-            eventoID = data.event_id || urlSlug; // Fallback se não vier ID
-            document.getElementById('headerEventName').innerText = data.festa;
-            cacheDrinks = data.drinks;
-
-            if (usuario.nome) {
+            if (usuario.nome && usuario.id) {
                 document.getElementById('headerUserInfo').innerText = `Olá, ${usuario.nome}`;
-                verificarStatusPedido();
+                verificarStatusPedido(); 
+            } else {
+                mostrarView('view-login');
             }
         } catch (e) {
-            alert("Erro ao carregar o cardápio. Verifique sua conexão.");
+            console.error(e);
+            alert("Erro ao carregar o cardápio. Verifique sua conexão com a internet.");
         }
     }
 
+    // REGISTRO DO CLIENTE
     window.entrar = () => {
         const nome = document.getElementById('inputNome').value.trim();
-        if (!nome) return alert("Diga-nos seu nome!");
+        if (!nome) return alert("Diga-nos seu nome para chamarmos no balcão!");
         
         usuario.nome = nome.toUpperCase();
-        usuario.id = 'u' + Math.random().toString(36).substr(2, 9);
+        usuario.id = 'cli_' + Math.random().toString(36).substr(2, 9);
+        
         localStorage.setItem('aurora_user_nome', usuario.nome);
         localStorage.setItem('aurora_user_id', usuario.id);
         
-        location.reload();
+        document.getElementById('headerUserInfo').innerText = `Olá, ${usuario.nome}`;
+        verificarStatusPedido();
     };
 
-    // 2. RENDERIZA O CARDÁPIO (DADOS DO POSTGRES)
+    // 2. RENDERIZA CARDÁPIO E CONTROLA CARRINHO
     function renderizarCardapio() {
         const lista = document.getElementById('menu-list');
         lista.innerHTML = '';
         
         cacheDrinks.forEach((d, index) => {
+            // Usando 'd.drink_nome' conforme o seu banco PostgreSQL
+            const nomeDoDrink = d.drink_nome || "Drink Sem Nome";
+            const qtdNoCarrinho = carrinho[nomeDoDrink]?.qtd || 0;
+            
             const div = document.createElement('div');
-            div.className = `drink-card ${carrinho[d.nome] ? 'selected' : ''}`;
+            div.className = `drink-card ${qtdNoCarrinho > 0 ? 'selected' : ''}`;
+            
+            // Usando 'd.image_url' conforme o seu banco
             div.innerHTML = `
-                <div class="img-container" onclick="verDetalhes(${index})">
-                    <img src="${d.foto || './imagens/drink_default.jpg'}" class="drink-img">
+                <div class="img-container" style="position: relative;" onclick="verDetalhes(${index})">
+                    <img src="${d.image_url || 'https://via.placeholder.com/150?text=Drink'}" class="drink-img">
+                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.6); color: white; text-align: center; font-size: 0.65em; padding: 4px 0; letter-spacing: 1px; text-transform: uppercase; backdrop-filter: blur(2px);">
+                        🔍 Ver Insumos
+                    </div>
                 </div>
                 <div class="drink-info">
-                    <div class="drink-name">${d.nome_do_drink}</div>
-                    <small style="color:#7f8c8d">${d.descricao || ''}</small>
+                    <div class="drink-name">${nomeDoDrink}</div>
+                    <small style="color:#e67e22; font-weight: bold;">Disponível: ${d.planned_quantity || '0'}</small>
                 </div>
                 <div class="qty-control">
-                    <button class="btn-qty" onclick="alterarQtd('${d.nome_do_drink}', -1)">-</button>
-                    <span class="qty-val">${carrinho[d.nome_do_drink]?.qtd || 0}</span>
-                    <button class="btn-qty active" onclick="alterarQtd('${d.nome_do_drink}', 1)">+</button>
+                    <button class="btn-qty" onclick="alterarQtd('${nomeDoDrink}', '${d.id}', -1)">-</button>
+                    <span class="qty-val">${qtdNoCarrinho}</span>
+                    <button class="btn-qty active" onclick="alterarQtd('${nomeDoDrink}', '${d.id}', 1)">+</button>
                 </div>
             `;
             lista.appendChild(div);
@@ -167,11 +179,14 @@
         mostrarView('view-menu');
     }
 
-    window.alterarQtd = (nome, delta) => {
-        if (!carrinho[nome]) carrinho[nome] = { nome: nome, qtd: 0 };
+    window.alterarQtd = (nome, drinkId, delta) => {
+        if (!carrinho[nome]) carrinho[nome] = { nome: nome, id: drinkId, qtd: 0 };
         
         const totalNoCarrinho = Object.values(carrinho).reduce((a, b) => a + b.qtd, 0);
-        if (delta > 0 && totalNoCarrinho >= 2) return alert("Máximo de 2 drinks por pedido!");
+        
+        if (delta > 0 && totalNoCarrinho >= 2) {
+            return alert("🍹 Calma lá! Para não travar o bar, o máximo são 2 drinks por pedido.");
+        }
 
         carrinho[nome].qtd += delta;
         if (carrinho[nome].qtd <= 0) delete carrinho[nome];
@@ -186,59 +201,100 @@
         document.getElementById('floatCart').style.display = total > 0 ? 'flex' : 'none';
     }
 
-    // 3. ENVIA O PEDIDO (PARA O KDS NO FIREBASE)
+    // 3. ENVIA PEDIDO
     window.enviarPedido = async () => {
-        const itens = Object.values(carrinho);
+        const itensReq = Object.values(carrinho).map(i => ({ id: i.id, qty: i.qtd, nome: i.nome }));
+        if (itensReq.length === 0) return;
+
+        document.getElementById('floatCart').style.opacity = '0.5';
+
         try {
-            await addDoc(collection(db, "eventos", eventoID, "pedidos"), {
-                cliente: usuario.nome,
-                clienteID: usuario.id,
-                itens: itens,
-                status: 'Pendente',
-                data: serverTimestamp(),
-                origem: 'App'
+            const res = await fetch(`${API_BASE}/orders/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event_id: eventoID,
+                    client_name: usuario.nome,
+                    client_id: usuario.id,
+                    items: itensReq
+                })
             });
-            carrinho = {};
-            verificarStatusPedido();
+            
+            if (res.ok) {
+                carrinho = {};
+                atualizarBotaoCarrinho();
+                verificarStatusPedido(); 
+            } else {
+                const data = await res.json();
+                alert(data.detail || "Erro ao fazer pedido. Tente novamente.");
+                document.getElementById('floatCart').style.opacity = '1';
+            }
         } catch (e) {
-            alert("Erro ao enviar pedido.");
+            alert("Falha na conexão com o Bar. Tente novamente.");
+            document.getElementById('floatCart').style.opacity = '1';
         }
     };
 
-    // 4. MONITORAMENTO DE STATUS (KDS -> CELULAR DO CLIENTE)
+    // 4. MOTOR DE POLLING (Substitui onSnapshot)
     function verificarStatusPedido() {
-        const q = query(
-            collection(db, "eventos", eventoID, "pedidos"),
-            where("clienteID", "==", usuario.id),
-            where("status", "in", ["Pendente", "Preparando", "Pronto"]),
-            limit(1)
-        );
+        if (!eventoID || eventoID === 'null') return;
+        if (pollInterval) clearInterval(pollInterval);
+        
+        const checarServidor = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/orders/active?event_id=${eventoID}&client_id=${usuario.id}`);
+                const data = await res.json();
 
-        onSnapshot(q, (snap) => {
-            if (snap.empty) {
-                renderizarCardapio();
-                mostrarView('view-menu');
-            } else {
-                const p = snap.docs[0].data();
-                const statusItems = document.getElementById('statusItems');
-                statusItems.innerHTML = p.itens.map(i => `<b>${i.qtd}x ${i.nome}</b>`).join('<br>');
-                
-                document.getElementById('statusTitle').innerText = p.status.toUpperCase();
-                document.getElementById('statusDesc').innerText = p.status === 'Pronto' ? 'Vem buscar! 🍹' : 'Estamos preparando...';
-                
-                mostrarView('view-status');
-                if (p.status === 'Pronto' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                if (data.has_active_order) {
+                    const p = data.order;
+                    
+                    document.getElementById('statusTitle').innerText = p.status.toUpperCase();
+                    document.getElementById('statusDesc').innerText = p.status === 'Pronto' ? 'Vem buscar no balcão! 🍹' : 'Estamos preparando...';
+                    
+                    const statusItems = document.getElementById('statusItems');
+                    statusItems.innerHTML = p.itens.map(i => `<b style="font-size: 1.2em;">${i.qtd}x</b> ${i.nome}`).join('<br><br>');
+                    
+                    mostrarView('view-status');
+                    
+                    if (p.status === 'Pronto' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                } else {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    renderizarCardapio();
+                }
+            } catch (e) {
+                console.log("Aguardando servidor do bar...");
             }
-        });
+        };
+
+        checarServidor(); 
+        pollInterval = setInterval(checarServidor, 3000); 
     }
 
+    // 5. O SEU MODAL DE DETALHES (INSUMOS)
     window.verDetalhes = (idx) => {
         const d = cacheDrinks[idx];
-        document.getElementById('modal-img').src = d.foto || './imagens/drink_default.jpg';
-        document.getElementById('modal-titulo').innerText = d.nome_do_drink;
-        // O SQL já traz os ingredientes formatados na descrição ou você pode tratar aqui
-        document.getElementById('modal-lista').innerHTML = `<li>${d.descricao}</li>`;
+        document.getElementById('modal-img').src = d.image_url || 'https://via.placeholder.com/400x200?text=Aurora+Bartenders';
+        document.getElementById('modal-titulo').innerText = d.drink_nome || 'Drink';
+        
+        const infoInsumos = d.descricao || 'Detalhes da receita não disponíveis.';
+        
+        // Mágica aqui: Fatiar por vírgula e criar os <li> elegantes
+        const listaHTML = infoInsumos.split(',')
+            .map(item => `<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #333; font-size: 0.95em;">🍹 ${item.trim()}</li>`)
+            .join('');
+            
+        document.getElementById('modal-lista').innerHTML = listaHTML;
+        
         document.getElementById('modal-detalhes').style.display = 'flex';
+    };
+
+    window.fecharDetalhes = (e) => {
+        if(e.target.id === 'modal-detalhes') document.getElementById('modal-detalhes').style.display = 'none';
+    };
+
+    window.fecharDetalhesManual = () => {
+        document.getElementById('modal-detalhes').style.display = 'none';
     };
 
     function mostrarView(id) {
