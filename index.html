@@ -523,8 +523,7 @@
 			atualizarTotais();
 }
 
- // --- FUNÇÃO DE RECEITA (VERSÃO NOVA: POSTGRESQL + API RENDER) ---
-// --- FUNÇÃO DE RECEITA (VERSÃO BLINDADA) ---
+    // --- FUNÇÃO DE RECEITA (VERSÃO NOVA: POSTGRESQL + API RENDER) ---
     window.verReceita = async (drinkId) => {
     if(!drinkId) return;
     
@@ -565,9 +564,9 @@
 
             // Textos do Drink
             const info = dadosApi.drink;
-            // ATENÇÃO: Se os nomes das colunas no banco forem diferentes, troque o 'technique' e 'description' abaixo
+            // ATENÇÃO: Se os nomes das colunas no banco forem diferentes, troque o 'technique' e 'preparation' abaixo
             document.getElementById('recTecnica').innerText = info && info.technique ? info.technique : 'Técnica Padrão';
-            document.getElementById('recTexto').innerText = info && info.description ? info.description : 'Modo de preparo não informado.';
+            document.getElementById('recTexto').innerText = info && info.preparation_steps ? info.preparation_steps : 'Modo de preparo não informado.';
             
         } else {
             lista.innerHTML = '<li>Erro ao carregar dados.</li>';

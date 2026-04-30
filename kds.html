@@ -109,6 +109,9 @@
                 document.getElementById('tela-kds').style.display = 'block';
                 document.getElementById('kds-nome-evento').innerText = `🍸 ${nomeEvento}`;
                 
+                // MÁGICA AQUI: Faltava chamar a função de carregar a equipe!
+                carregarOperadores();
+
                 // Inicia o motor de busca de pedidos (Polling)
                 setInterval(atualizarFilaKDS, 3000);
                 atualizarFilaKDS();
@@ -117,6 +120,21 @@
                 document.getElementById('tela-selecao').style.display = 'flex';
                 buscarEventosNoRadar();
             }
+        }
+
+        // Busca equipe do Postgres
+        async function carregarOperadores() {
+            const sel = document.getElementById('kdsOperador');
+            try {
+                const res = await fetch(`${API_BASE}/team`); 
+                const data = await res.json();
+                if(data && data.length > 0) {
+                    data.forEach(d => {
+                        // Corrigido para d.nome garantindo o match com a tabela STAFF
+                        sel.innerHTML += `<option value="${d.name}">${d.name}</option>`;
+                    });
+                }
+            } catch(e) { sel.innerHTML += `<option value="Equipe Aurora">Equipe Aurora</option>`; }
         }
 
         async function buscarEventosNoRadar() {
@@ -218,6 +236,15 @@
         }
 
         window.moverPedido = async (id, novoStatus) => {
+            // TRAVA DE SEGURANÇA: Exige operador para preparar o drink
+            if (novoStatus === 'Preparando') {
+                const operador = document.getElementById('kdsOperador').value;
+                if (!operador) {
+                    alert("⚠️ Selecione QUEM ESTÁ OPERANDO no topo da tela antes de puxar um pedido!");
+                    return;
+                }
+            }
+
             try {
                 const res = await fetch(`${API_BASE}/orders/${id}/status`, {
                     method: 'PATCH',
